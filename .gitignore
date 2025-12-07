@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+.pub-cache/
+.dart_tool/
+.packages
+pubspec.lock
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Build outputs
+build/
+*.apk
+*.aab
+*.ipa
+
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Android
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/app/build/
+*.keystore
+
+# Firebase (SENSITIVE - DO NOT COMMIT)
+**/google-services.json
+**/firebase-service-account.json
+**/GoogleService-Info.plist
+
+# API secrets
+api/.env
+api/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+
+# Archives
+*.zip
+
+# Development artifacts (not for production)
+recovered_artifacts/
+mockups/
+
+# Firebase cache
+.firebase/
+
+# Documentation files (keep locally, not in repo)
+*.doc
+*.docx
+VOO_App_Workflow_Document.*
+

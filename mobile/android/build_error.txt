@@ -1,0 +1,77 @@
+> Task :gradle:extractPluginRequests NO-SOURCE
+> Task :gradle:generatePluginAdapters NO-SOURCE
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy UP-TO-DATE
+> Task :gradle:compileGroovyPlugins NO-SOURCE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+
+> Configure project :flutter_plugin_android_lifecycle
+Warning: The plugin flutter_plugin_android_lifecycle requires Android SDK version 34.
+For more information about build configuration, see https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+
+> Configure project :flutter_secure_storage
+Warning: The plugin flutter_secure_storage requires Android SDK version 34.
+For more information about build configuration, see https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+
+> Configure project :image_picker_android
+Warning: The plugin image_picker_android requires Android SDK version 34.
+For more information about build configuration, see https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+
+> Configure project :path_provider_android
+Warning: The plugin path_provider_android requires Android SDK version 34.
+For more information about build configuration, see https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+
+> Configure project :url_launcher_android
+Warning: The plugin url_launcher_android requires Android SDK version 34.
+For more information about build configuration, see https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+One or more plugins require a higher Android SDK version.
+Fix this issue by adding the following to C:\Users\Admin\VOOAPP\mobile\android\app\build.gradle:
+android {
+  compileSdkVersion 34
+  ...
+}
+
+WARNING: We recommend using a newer Android Gradle plugin to use compileSdk = 34
+
+This Android Gradle plugin (8.1.0) was tested up to compileSdk = 33 (and compileSdkPreview = "UpsideDownCakePrivacySandbox").
+
+You are strongly encouraged to update your project to use a newer
+Android Gradle plugin that has been tested with compileSdk = 34.
+
+If you are already using the latest version of the Android Gradle plugin,
+you may need to wait until a newer version with support for compileSdk = 34 is available.
+
+To suppress this warning, add/update
+    android.suppressUnsupportedCompileSdk=34
+to this project's gradle.properties.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+
+> Task :app:compileFlutterBuildDebug
+lib/screens/home/home_screen.dart:102:43: Error: Member not found: 'road'.
+                  _buildQuickAction(Icons.road, 'Roads', Colors.orange),
+                                          ^^^^
+Target kernel_snapshot failed: Exception
+
+
+> Task :app:compileFlutterBuildDebug FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileFlutterBuildDebug'.
+> Process 'command 'C:\Users\Admin\flutter\flutter\bin\flutter.bat'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 15s
+5 actionable tasks: 1 executed, 4 up-to-date
