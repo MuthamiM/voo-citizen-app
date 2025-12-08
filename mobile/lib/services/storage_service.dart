@@ -53,4 +53,19 @@ class StorageService {
   static List<dynamic> getCachedIssues() {
     return (getData(issuesBox, 'my_issues') as List?) ?? [];
   }
+
+  static Future<void> cacheBursaries(List<dynamic> bursaries) async {
+    await saveData(bursariesBox, 'my_applications', bursaries);
+  }
+
+  static List<dynamic> getCachedBursaries() {
+    return (getData(bursariesBox, 'my_applications') as List?) ?? [];
+  }
+
+  static Future<void> clearAll() async {
+    await Hive.box(announcementsBox).clear();
+    await Hive.box(issuesBox).clear();
+    await Hive.box(bursariesBox).clear();
+    await Hive.box(settingsBox).clear();
+  }
 }

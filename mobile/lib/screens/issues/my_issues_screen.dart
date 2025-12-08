@@ -26,53 +26,44 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
 
   Future<void> _loadIssues() async {
     final auth = context.read<AuthService>();
-    
-    // Check connectivity
-    final isOnline = await StorageService.isOnline();
-    
-    if (!isOnline) {
-      final cachedIssues = StorageService.getCachedIssues();
-      if (mounted) {
-        setState(() {
-          _issues = cachedIssues;
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You are offline. Showing cached issues.'), backgroundColor: Colors.orange),
-        );
-      }
-      return;
-    }
-
-    // Get user ID
     final userId = auth.user?['id']?.toString();
+    
     if (userId == null || userId.isEmpty) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 
+    // 1. Load from cache immediately
+    final cachedIssues = StorageService.getCachedIssues();
+    if (cachedIssues.isNotEmpty && mounted) {
+      setState(() {
+        _issues = cachedIssues;
+        _isLoading = false;
+      });
+    }
+
+    // 2. Fetch fresh data
     try {
-      final loadedIssues = await SupabaseService.getMyIssues(userId);
-      if (mounted) {
-        setState(() {
-          _issues = loadedIssues;
-          _isLoading = false;
-        });
-        StorageService.cacheIssues(loadedIssues);
+      if (await StorageService.isOnline()) {
+        final loadedIssues = await SupabaseService.getMyIssues(userId);
+        if (mounted) {
+          setState(() {
+            _issues = loadedIssues;
+            _isLoading = false;
+          });
+          StorageService.cacheIssues(loadedIssues);
+        }
+      } else if (_issues.isEmpty) {
+         if (mounted) {
+           setState(() => _isLoading = false);
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('Offline. No cached/new issues found.'), backgroundColor: Colors.orange),
+           );
+         }
       }
     } catch (e) {
-      // Fallback to cache
-      final cachedIssues = StorageService.getCachedIssues();
-      if (mounted) {
-        setState(() {
-          _issues = cachedIssues;
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Connection failed. Showing cached issues.'), backgroundColor: Colors.orange),
-        );
+      if (mounted && _issues.isEmpty) {
+        setState(() => _isLoading = false);
       }
     }
   }

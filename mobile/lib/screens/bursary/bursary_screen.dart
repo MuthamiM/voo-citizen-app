@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/supabase_service.dart';
+import '../../services/storage_service.dart';
 
 class BursaryScreen extends StatefulWidget {
   const BursaryScreen({super.key});
@@ -104,30 +105,45 @@ class _BursaryScreenState extends State<BursaryScreen> {
 
   Future<void> _loadApplications() async {
     final auth = context.read<AuthService>();
-    
-    // Get user ID
     final userId = auth.user?['id']?.toString();
+    
     if (userId == null || userId.isEmpty) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 
+    // 1. Load from cache immediately
+    final cachedApps = StorageService.getCachedBursaries();
+    if (cachedApps.isNotEmpty && mounted) {
+      setState(() {
+        _applications = cachedApps;
+        _isLoading = false; 
+      });
+    }
+
+    // 2. Fetch fresh data from network
     try {
-      final loadedApps = await SupabaseService.getMyBursaryApplications(userId);
-      if (mounted) {
-        setState(() {
-          _applications = loadedApps;
-          _isLoading = false;
-        });
+      if (await StorageService.isOnline()) {
+        final loadedApps = await SupabaseService.getMyBursaryApplications(userId);
+        if (mounted) {
+          setState(() {
+            _applications = loadedApps;
+            _isLoading = false;
+          });
+          // Update cache
+          await StorageService.cacheBursaries(loadedApps);
+        }
+      } else if (_applications.isEmpty) {
+         if (mounted) {
+           setState(() => _isLoading = false);
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('Offline. No cached data found.'), backgroundColor: Colors.orange),
+           );
+         }
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && _applications.isEmpty) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load applications. Check your connection.'), backgroundColor: Colors.red),
-        );
       }
     }
   }

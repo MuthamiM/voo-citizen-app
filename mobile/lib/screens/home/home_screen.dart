@@ -7,6 +7,8 @@ import '../services/services_screen.dart';
 import '../bursary/bursary_screen.dart';
 import '../issues/report_issue_screen.dart';
 import '../issues/my_issues_screen.dart';
+import '../auth/login_screen.dart';
+import '../../services/supabase_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -72,124 +74,143 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(screenWidth * 0.05),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Hello, ${user?['fullName']?.split(' ')[0] ?? 'Citizen'}! 👋',
-                  style: TextStyle(fontSize: screenWidth * 0.06, fontWeight: FontWeight.bold, color: Colors.white)),
-              const SizedBox(height: 8),
-              Text('Report issues in your community',
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: screenWidth * 0.035)),
-              const SizedBox(height: 24),
-              
-              Text('Quick Actions', style: TextStyle(fontSize: screenWidth * 0.045, fontWeight: FontWeight.bold, color: Colors.white)),
-              const SizedBox(height: 16),
-              
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 3,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.85,
-                children: [
-                   _buildQuickAction(Icons.school, 'Bursary', Colors.purple, screenWidth, isBursary: true),
-                  _buildQuickAction(Icons.add_road, 'Roads', Colors.orange, screenWidth, category: 'Damaged Roads'),
-                  _buildQuickAction(Icons.water_drop, 'Water', Colors.blue, screenWidth, category: 'Water/Sanitation'),
-                  _buildQuickAction(Icons.menu_book, 'Education', Colors.teal, screenWidth, category: 'School Infrastructure'),
-                  _buildQuickAction(Icons.woman, 'Women', Colors.pink, screenWidth, category: 'Women Empowerment'),
-                  _buildQuickAction(Icons.more_horiz, 'Other', Colors.grey, screenWidth, category: 'Other'),
-                ],
-              ),
+        child: RefreshIndicator(
+          onRefresh: _refreshHome,
+          color: const Color(0xFF6366f1),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.all(screenWidth * 0.05),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Hello, ${user?['fullName']?.split(' ')[0] ?? 'Citizen'}! 👋',
+                    style: TextStyle(fontSize: screenWidth * 0.06, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 8),
+                Text('Welcome to Voo Kyamatu Ward',
+                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: screenWidth * 0.035)),
+                const SizedBox(height: 24),
+                
+                Text('Quick Actions', style: TextStyle(fontSize: screenWidth * 0.045, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 16),
+                
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.85,
+                  children: [
+                     _buildQuickAction(Icons.school, 'Bursary', Colors.purple, screenWidth, isBursary: true),
+                    _buildQuickAction(Icons.add_road, 'Roads', Colors.orange, screenWidth, category: 'Damaged Roads'),
+                    _buildQuickAction(Icons.water_drop, 'Water', Colors.blue, screenWidth, category: 'Water/Sanitation'),
+                    _buildQuickAction(Icons.menu_book, 'Education', Colors.teal, screenWidth, category: 'School Infrastructure'),
+                    _buildQuickAction(Icons.woman, 'Women', Colors.pink, screenWidth, category: 'Women Empowerment'),
+                    _buildQuickAction(Icons.more_horiz, 'Other', Colors.grey, screenWidth, category: 'Other'),
+                  ],
+                ),
 
-              const SizedBox(height: 28),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Recent Announcements', style: TextStyle(fontSize: screenWidth * 0.045, fontWeight: FontWeight.bold, color: Colors.white)),
-                  TextButton(
-                    onPressed: () => setState(() => _currentIndex = 3), // Switch to Services tab
-                    child: const Text('View All', style: TextStyle(color: Color(0xFF6366f1))),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              
-              if (recentAnnouncement != null)
-                Card(
-                  color: const Color(0xFF1a1a3e),
-                  child: InkWell(
-                    onTap: () => setState(() => _currentIndex = 3),
-                    borderRadius: BorderRadius.circular(16),
+                const SizedBox(height: 28),
+                
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Recent Announcements', style: TextStyle(fontSize: screenWidth * 0.045, fontWeight: FontWeight.bold, color: Colors.white)),
+                    TextButton(
+                      onPressed: () => setState(() => _currentIndex = 3), // Switch to Services tab
+                      child: const Text('View All', style: TextStyle(color: Color(0xFF6366f1))),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                
+                if (recentAnnouncement != null)
+                  Card(
+                    color: const Color(0xFF1a1a3e),
+                    child: InkWell(
+                      onTap: () => setState(() => _currentIndex = 3),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF6366f1).withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.campaign, color: Color(0xFF6366f1)),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(recentAnnouncement['title'] ?? 'New Announcement', 
+                                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
+                                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(recentAnnouncement['date'] ?? '', 
+                                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              recentAnnouncement['content'] ?? '',
+                              style: TextStyle(color: Colors.white.withOpacity(0.8), height: 1.4),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Card(
+                    color: const Color(0xFF1a1a3e),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF6366f1).withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(Icons.campaign, color: Color(0xFF6366f1)),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(recentAnnouncement['title'] ?? 'New Announcement', 
-                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
-                                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(recentAnnouncement['date'] ?? '', 
-                                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white38),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            recentAnnouncement['content'] ?? '',
-                            style: TextStyle(color: Colors.white.withOpacity(0.8), height: 1.4),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          Icon(Icons.notifications_off_outlined, color: Colors.white.withOpacity(0.5)),
+                          const SizedBox(width: 12),
+                          Text('No new announcements. Pull to refresh.', style: TextStyle(color: Colors.white.withOpacity(0.5))),
                         ],
                       ),
                     ),
                   ),
-                )
-              else
-                Card(
-                  color: const Color(0xFF1a1a3e),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.notifications_off_outlined, color: Colors.white.withOpacity(0.5)),
-                        const SizedBox(width: 12),
-                        Text('No new announcements', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _refreshHome() async {
+    if (await StorageService.isOnline()) {
+      final announcements = await SupabaseService.getAnnouncements();
+      await StorageService.cacheAnnouncements(announcements);
+      if (mounted) setState(() {});
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Offline: Using cached data'), backgroundColor: Colors.orange),
+        );
+      }
+    }
   }
 
   Widget _buildQuickAction(IconData icon, String label, Color color, double screenWidth, 
@@ -307,7 +328,16 @@ class _HomeScreenState extends State<HomeScreen> {
                      SizedBox(
                       width: double.infinity,
                       child: TextButton(
-                        onPressed: () => auth.logout(),
+                        onPressed: () async {
+                          await auth.logout();
+                          if (mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const LoginScreen()),
+                              (route) => false,
+                            );
+                          }
+                        },
                         child: const Text('Log Out', style: TextStyle(color: Colors.red, fontSize: 16)),
                       ),
                     ),

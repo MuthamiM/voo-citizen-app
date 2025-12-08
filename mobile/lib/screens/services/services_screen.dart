@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/auth_service.dart';
 import '../../services/storage_service.dart';
 
@@ -391,11 +392,22 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   Future<void> _callNumber(String number) async {
-    // Reverted url_launcher due to build issues
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Calling $number (Dialer not available in this build)')),
-      );
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: number,
+    );
+    try {
+      if (await canLaunchUrl(launchUri)) {
+        await launchUrl(launchUri);
+      } else {
+        throw 'Could not launch $number';
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not launch dialer: $e')),
+        );
+      }
     }
   }
 
