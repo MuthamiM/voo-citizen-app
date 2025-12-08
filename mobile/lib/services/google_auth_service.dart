@@ -133,7 +133,9 @@ class GoogleAuthService {
         'auth_provider': 'google',
       });
 
+      print('Creating user in Supabase: $body');
       final response = await http.post(Uri.parse(url), headers: headers, body: body);
+      print('Supabase response: ${response.statusCode} - ${response.body}');
       
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -146,9 +148,12 @@ class GoogleAuthService {
           'photoUrl': user['photo_url'],
           'issuesReported': 0,
         };
+      } else {
+        print('Error creating user: ${response.body}');
       }
       return null;
     } catch (e) {
+      print('Exception in _createUserInSupabase: $e');
       return null;
     }
   }

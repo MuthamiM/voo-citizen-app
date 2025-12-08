@@ -145,45 +145,45 @@ class _BursaryScreenState extends State<BursaryScreen> {
 
     try {
       final auth = context.read<AuthService>();
-      final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/bursary/apply'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${auth.token}',
-        },
-        body: jsonEncode({
-          'institutionName': _institutionController.text,
-          'institutionType': _institutionType,
-          'admissionNumber': _admissionController.text,
-          'course': _courseController.text,
-          'yearOfStudy': _yearController.text,
-          'annualFees': _annualFeesController.text,
-          'hasHelb': _hasHelb,
-          'hasGoKSponsorship': _hasGoKSponsorship,
-          'sponsorshipDetails': _sponsorshipDetailsController.text,
-          'guardianName': _guardianNameController.text,
-          'guardianPhone': _guardianPhoneController.text,
-          'guardianRelation': _guardianRelation,
-          'reason': _reasonController.text,
-        }),
+      
+      // Pack extra details into reason since schema is limited
+      final verboseReason = '''
+${_reasonController.text}
+
+--- Additional Details ---
+Admission: ${_admissionController.text}
+Fees: ${_annualFeesController.text}
+Guardian: ${_guardianNameController.text} (${_guardianRelation}) - ${_guardianPhoneController.text}
+HELB: ${_hasHelb ? 'Yes' : 'No'}
+Other Sponsorship: ${_hasGoKSponsorship ? 'Yes' : 'No'} ${_hasGoKSponsorship ? '(${_sponsorshipDetailsController.text})' : ''}
+''';
+
+      final result = await SupabaseService.applyForBursary(
+        userId: auth.user!['id'],
+        institutionName: _institutionController.text,
+        institutionType: _institutionType,
+        course: _courseController.text,
+        yearOfStudy: _yearController.text,
+        amountRequested: double.tryParse(_annualFeesController.text.replaceAll(',', '')),
+        reason: verboseReason,
       );
 
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200 && data['success']) {
+      if (result['success'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Application submitted! Ref: ${data['applicationNumber']}'),
+             const SnackBar(
+              content: Text('Application submitted successfully! 🎓'),
               backgroundColor: Colors.green,
             ),
           );
-          setState(() => _showForm = false);
-          _clearForm();
-          _loadApplications();
+          setState(() {
+            _showForm = false;
+            _clearForm();
+            _loadApplications(); // Reload list
+          });
         }
       } else {
-        throw Exception(data['error'] ?? 'Submission failed');
+        throw Exception(result['error'] ?? 'Failed to submit application');
       }
     } catch (e) {
       if (mounted) {

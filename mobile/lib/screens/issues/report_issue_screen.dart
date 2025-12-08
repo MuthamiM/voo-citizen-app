@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import '../../services/auth_service.dart';
+import '../../services/supabase_service.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   final String? initialCategory;
@@ -138,26 +139,21 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         base64Images.add(base64Encode(bytes));
       }
 
-      final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/issues'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${auth.token}',
+      final result = await SupabaseService.createIssue(
+        userId: auth.user!['id'],
+        userPhone: auth.user!['phone'] ?? 'N/A', // Handle missing phone for Google users
+        title: _titleController.text,
+        description: _descriptionController.text,
+        category: _selectedCategory,
+        images: base64Images,
+        location: {
+          'address': _locationController.text,
+          'lat': _position?.latitude,
+          'lng': _position?.longitude,
         },
-        body: jsonEncode({
-          'title': _titleController.text,
-          'description': _descriptionController.text,
-          'category': _selectedCategory,
-          'location': {
-            'address': _locationController.text,
-            'lat': _position?.latitude,
-            'lng': _position?.longitude,
-          },
-          'images': base64Images,
-        }),
       );
 
-      if (response.statusCode == 200) {
+      if (result['success'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Issue reported successfully! ✅'), backgroundColor: Colors.green),
@@ -165,7 +161,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
           Navigator.pop(context);
         }
       } else {
-        throw Exception('Failed to submit');
+        throw Exception(result['error'] ?? 'Failed to submit');
       }
     } catch (e) {
       if (mounted) {
