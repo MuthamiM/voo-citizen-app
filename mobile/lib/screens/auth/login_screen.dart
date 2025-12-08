@@ -7,6 +7,7 @@ import '../../services/auth_service.dart';
 import '../../services/google_auth_service.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
+import '../home/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -85,14 +86,11 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isGoogleLoading = false);
 
       if (result['success'] == true) {
-        // Store user data in AuthService
-        final auth = context.read<AuthService>();
+        // Store user data and token
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', 'google_session_${DateTime.now().millisecondsSinceEpoch}');
         await prefs.setString('user', jsonEncode(result['user']));
-        
-        // Notify auth service to reload
-        auth.notifyListeners();
+        await prefs.setInt('last_activity', DateTime.now().millisecondsSinceEpoch);
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -102,6 +100,14 @@ class _LoginScreenState extends State<LoginScreen> {
             backgroundColor: Colors.green,
           ),
         );
+        
+        // Navigate to home screen directly
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['error'] ?? 'Google sign-in failed'), backgroundColor: Colors.red),
@@ -217,11 +223,27 @@ class _LoginScreenState extends State<LoginScreen> {
                           keyboardType: TextInputType.phone,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: 'Phone Number',
+                            hintText: '7XXXXXXXX',
                             hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-                            prefixIcon: const Icon(Icons.phone_android, color: Color(0xFF6366f1)),
-                            prefixText: '+254 ',
-                            prefixStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            prefixIcon: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.phone_android, color: Color(0xFF6366f1)),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF6366f1).withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text('+254', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                             filled: true,
                             fillColor: const Color(0xFF0f0f23).withOpacity(0.5),
                             border: OutlineInputBorder(
