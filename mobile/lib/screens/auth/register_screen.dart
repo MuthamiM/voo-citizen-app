@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'dart:math';
 import '../../services/auth_service.dart';
-import '../../utils/password_generator.dart';
+import '../../services/dashboard_service.dart';
+import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -13,663 +14,474 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  int _currentStep = 0;
+  bool _isLoading = false;
+  bool _agreedToTerms = false;
+  bool _otpSent = false;
+  bool _otpVerified = false;
+  String _sentOtp = '';
+  String _generatedPassword = '';
+  
+  // Theme colors
+  static const Color primaryPink = Color(0xFFE8847C);
+  static const Color lightPink = Color(0xFFF5ADA7);
+  static const Color bgPink = Color(0xFFF9C5C1);
+  static const Color textDark = Color(0xFF333333);
+  static const Color textMuted = Color(0xFF666666);
+  
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _idController = TextEditingController();
-  final _otherVillageController = TextEditingController();
-  final _captchaController = TextEditingController();
-  final _phoneFocusNode = FocusNode();
-  
-  bool _acceptedTerms = false;
-  String? _selectedVillage;
-  String? _generatedPassword;
-  bool _passwordCopied = false;
-  
-  // OTP Verification State
-  bool _otpSent = false;
-  bool _otpVerified = false;
   final _otpController = TextEditingController();
-  String? _sentOtp; // In production, this would be server-side only
-  
-  final _villages = [
-    'Muthungue', 'Nditime', 'Maskikalini', 'Kamwiu', 'Ituusya', 'Ivitasya',
-    'Kyamatu/Nzanzu', 'Nzunguni', 'Kasasi', 'Kaluasi', 'Other'
+  final _passwordController = TextEditingController();
+  final _otherVillageController = TextEditingController();
+  String? _selectedVillage;
+
+  final List<String> _villages = [
+    'Kyamatu', 'Mwanyani', 'Itoloni', 'Kisovo', 'Iiani',
+    'Kituluni', 'Kwa Mutonga', 'Kwa Mutuvi', 'Kwa Kasee', 'Other'
   ];
-
-  // CAPTCHA State
-  late int _num1;
-  late int _num2;
-  late int _captchaResult;
-
-  @override
-  void initState() {
-    super.initState();
-    _phoneFocusNode.addListener(() => setState(() {}));
-    _generateCaptcha();
-  }
 
   @override
   void dispose() {
-    _phoneFocusNode.dispose();
+    _nameController.dispose();
+    _phoneController.dispose();
+    _idController.dispose();
+    _otpController.dispose();
+    _passwordController.dispose();
+    _otherVillageController.dispose();
     super.dispose();
   }
 
-  void _generateCaptcha() {
-    setState(() {
-      _num1 = DateTime.now().millisecond % 10;
-      _num2 = DateTime.now().microsecond % 10;
-      _captchaResult = _num1 + _num2;
-      _captchaController.clear();
-    });
-  }
-
-  // Send OTP to phone number
-  Future<void> _sendOtp() async {
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty || phone.length < 9) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid phone number first'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-    
-    // Generate OTP (in production this would be server-side)
-    _sentOtp = (100000 + DateTime.now().millisecondsSinceEpoch % 900000).toString().substring(0, 6);
-    setState(() => _otpSent = true);
-    
+  void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('OTP sent to +254$phone: $_sentOtp'), backgroundColor: Colors.green, duration: const Duration(seconds: 5)),
+      SnackBar(content: Text(msg), backgroundColor: const Color(0xFFD4635B), behavior: SnackBarBehavior.floating),
     );
   }
 
-  // Verify OTP
+  void _showSuccess(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: const Color(0xFF4CAF50), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  void _generatePassword() {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%&*';
+    final random = Random.secure();
+    setState(() {
+      _generatedPassword = List.generate(12, (_) => chars[random.nextInt(chars.length)]).join();
+      _passwordController.text = _generatedPassword;
+    });
+    Clipboard.setData(ClipboardData(text: _generatedPassword));
+    _showSuccess('Password generated and copied!');
+  }
+
+  Future<void> _sendOtp() async {
+    if (_phoneController.text.length < 9) {
+      _showError('Please enter a valid phone number');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final result = await DashboardService.requestOtp('+254${_phoneController.text}');
+      if (result['success'] == true) {
+        setState(() {
+          _otpSent = true;
+          _sentOtp = result['otp'] ?? '123456';
+        });
+        _showSuccess('OTP sent to your phone');
+      } else {
+        _showError(result['error'] ?? 'Failed to send OTP');
+      }
+    } catch (e) {
+      _showError('Error sending OTP');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _verifyOtp() {
     if (_otpController.text == _sentOtp) {
       setState(() => _otpVerified = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Phone verified! ✅'), backgroundColor: Colors.green),
-      );
+      _showSuccess('Phone verified!');
+      Future.delayed(const Duration(milliseconds: 500), _nextStep);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid OTP. Try again.'), backgroundColor: Colors.red),
-      );
+      _showError('Invalid OTP');
     }
   }
 
-
-  void _showTermsDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a3e),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Terms & Privacy Policy', style: TextStyle(color: Colors.white)),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Terms of Service', style: TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(
-                '1. ACCEPTANCE OF TERMS\n'
-                'By accessing and using the VOO Citizen platform, you agree to be bound by these Terms of Service.\n\n'
-                '2. USER RESPONSIBILITIES\n'
-                'Users are prohibited from submitting false or malicious reports. All information provided must be accurate.\n\n'
-                '3. DATA USAGE\n'
-                'The Service may access device identifiers and location data for verification purposes.',
-                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11, height: 1.4),
-              ),
-              const SizedBox(height: 16),
-              const Text('Privacy Policy', style: TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(
-                'We collect Personal Identifiable Information including National ID and Phone Number. '
-                'Data is secured with encryption and may be shared with relevant authorities for issue resolution.',
-                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11, height: 1.4),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF6366f1))),
-          ),
-        ],
-      ),
-    );
+  void _nextStep() {
+    if (_currentStep < 2) {
+      setState(() => _currentStep++);
+    }
   }
 
-  // Generate password and show dialog
-  void _generateAndShowPassword() {
-    if (_nameController.text.isEmpty || _phoneController.text.isEmpty || _idController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields first'), backgroundColor: Colors.red),
-      );
-      return;
+  void _prevStep() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
     }
-
-    final password = PasswordGenerator.generate(length: 12);
-    setState(() {
-      _generatedPassword = password;
-      _passwordCopied = false;
-    });
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1a1a3e),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.key, color: Color(0xFF6366f1), size: 28),
-              SizedBox(width: 8),
-              Text('Your Password', style: TextStyle(color: Colors.white)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Copy this password now! It will not be shown again after you close this dialog.',
-                style: TextStyle(color: Colors.orange.withOpacity(0.9), fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0f0f23),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF6366f1)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SelectableText(
-                      password,
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        letterSpacing: 2,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: password));
-                    setDialogState(() => _passwordCopied = true);
-                    setState(() => _passwordCopied = true);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Password copied! ✅'), backgroundColor: Colors.green, duration: Duration(seconds: 1)),
-                      );
-                    }
-                  },
-                  icon: Icon(_passwordCopied ? Icons.check : Icons.copy, size: 18),
-                  label: Text(_passwordCopied ? 'Copied!' : 'Copy to Clipboard'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _passwordCopied ? Colors.green : const Color(0xFF6366f1),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setState(() => _generatedPassword = null);
-                Navigator.pop(ctx);
-              },
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: _passwordCopied ? () => Navigator.pop(ctx) : null,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366f1)),
-              child: const Text('I\'ve Saved It', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<void> _handleRegister() async {
-    // CAPTCHA Validation
-    if (_captchaController.text != _captchaResult.toString()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Incorrect CAPTCHA. Please try again.'), backgroundColor: Colors.red),
-      );
-      _generateCaptcha();
+    if (!_agreedToTerms) {
+      _showError('Please accept the terms');
+      return;
+    }
+    if (_passwordController.text.length < 8) {
+      _showError('Password must be at least 8 characters');
       return;
     }
 
-    // Basic validation
-    if (_nameController.text.isEmpty || _phoneController.text.isEmpty || _idController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields'), backgroundColor: Colors.red),
+    setState(() => _isLoading = true);
+    try {
+      final auth = context.read<AuthService>();
+      final village = _selectedVillage == 'Other' ? _otherVillageController.text : _selectedVillage;
+      final result = await auth.register(
+        _nameController.text,
+        '+254${_phoneController.text}',
+        _idController.text,
+        _passwordController.text,
+        village: village,
       );
-      return;
-    }
 
-    // Phone OTP verification is REQUIRED
-    if (!_otpVerified) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please verify your phone number with OTP'), backgroundColor: Colors.orange),
-      );
-      return;
-    }
-
-    // Password generation is REQUIRED
-    if (_generatedPassword == null || !_passwordCopied) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please generate and copy your password first'), backgroundColor: Colors.orange),
-      );
-      return;
-    }
-
-    if (!_acceptedTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please accept Terms & Privacy Policy'), backgroundColor: Colors.orange),
-      );
-      return;
-    }
-
-    final auth = context.read<AuthService>();
-    final result = await auth.register(
-      _nameController.text,
-      _phoneController.text,
-      _idController.text,
-      _generatedPassword!,
-      village: _selectedVillage == 'Other' ? _otherVillageController.text : _selectedVillage,
-    );
-
-    if (mounted) {
-      if (result['success']) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1a1a3e),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.green, size: 28),
-                SizedBox(width: 8),
-                Text('Account Created!', style: TextStyle(color: Colors.white)),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Your account has been created successfully!', style: TextStyle(color: Colors.white.withOpacity(0.8))),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6366f1).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF6366f1)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Login with:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      Text('Phone: ${_phoneController.text}', style: const TextStyle(color: Colors.white)),
-                      const SizedBox(height: 4),
-                      const Text('Password: (the one you copied)', style: TextStyle(color: Colors.green)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366f1)),
-                child: const Text('Go to Login', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        );
+      if (result['success'] == true) {
+        _showSuccess('Registration successful!');
+        if (mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['error']), backgroundColor: Colors.red),
-        );
+        _showError(result['error'] ?? 'Registration failed');
       }
+    } catch (e) {
+      _showError('Error: $e');
+    } finally {
+      setState(() => _isLoading = false);
     }
-  }
-
-  InputDecoration _buildInputDecoration(String hint, IconData icon, {Widget? suffix, bool showPrefix = false}) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-      prefixIcon: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(width: 12),
-          Icon(icon, color: const Color(0xFF6366f1)),
-          if (showPrefix) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6366f1).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text('+254', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-          const SizedBox(width: 12),
-        ],
-      ),
-      prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-      suffixIcon: suffix,
-      filled: true,
-      fillColor: const Color(0xFF0f0f23).withOpacity(0.5),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF6366f1), width: 2)),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthService>();
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1a1a3e), Color(0xFF0f0f23)]),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+      body: Stack(
+        children: [
+          // Background
+          Container(width: size.width, height: size.height, color: bgPink),
+          
+          // Decorative circles
+          Positioned(top: -60, left: -80, child: _buildCircle(220, primaryPink.withOpacity(0.4))),
+          Positioned(top: 150, right: -50, child: _buildCircle(160, lightPink.withOpacity(0.5))),
+          Positioned(bottom: size.height * 0.5, left: -40, child: _buildCircle(100, primaryPink.withOpacity(0.3))),
+
+          // Header
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => _currentStep > 0 ? _prevStep() : Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                  ),
+                  const Spacer(),
+                  Text('Step ${_currentStep + 1} of 3', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+          ),
+
+          // Title
+          Positioned(
+            top: size.height * 0.14,
+            left: 32,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
-                Row(
-                  children: [
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back_ios, color: Colors.white)),
-                    const Expanded(child: Text('Sign Up', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white))),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Logo
-                Container(
-                  width: 80, height: 80,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-                  child: ClipOval(
-                    child: Image.asset('assets/images/logo.png', fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.location_city, size: 40, color: Color(0xFF6366f1)),
-                    ),
+                Text(
+                  _getTitles()[_currentStep],
+                  style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    shadows: [Shadow(color: Colors.black.withOpacity(0.1), offset: const Offset(0, 2), blurRadius: 4)],
                   ),
                 ),
-                const SizedBox(height: 32),
-
-                // Form
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2d1b69).withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: const Color(0xFF6366f1).withOpacity(0.2)),
-                  ),
-                  child: Column(
-                    children: [
-                      // Name and ID Row
-                      Row(
-                        children: [
-                          Expanded(child: TextField(controller: _nameController, style: const TextStyle(color: Colors.white), textCapitalization: TextCapitalization.words, decoration: _buildInputDecoration('Full Name', Icons.person_outline))),
-                          const SizedBox(width: 12),
-                          Expanded(child: TextField(controller: _idController, keyboardType: TextInputType.number, style: const TextStyle(color: Colors.white), decoration: _buildInputDecoration('National ID', Icons.badge_outlined))),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Phone Number with OTP Verification
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _phoneController,
-                              focusNode: _phoneFocusNode,
-                              keyboardType: TextInputType.phone,
-                              enabled: !_otpVerified,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: _buildInputDecoration(
-                                'Phone Number',
-                                Icons.phone_android,
-                                showPrefix: _phoneFocusNode.hasFocus || _phoneController.text.isNotEmpty,
-                                suffix: _otpVerified
-                                    ? const Icon(Icons.check_circle, color: Colors.green)
-                                    : null,
-                              ),
-                            ),
-                          ),
-                          if (!_otpVerified) ...[
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              height: 48,
-                              child: ElevatedButton(
-                                onPressed: _otpSent ? null : _sendOtp,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF6366f1),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: Text(_otpSent ? 'Sent' : 'Get OTP', style: const TextStyle(color: Colors.white, fontSize: 12)),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      
-                      // OTP Input (shown after Send OTP)
-                      if (_otpSent && !_otpVerified) ...[
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _otpController,
-                                keyboardType: TextInputType.number,
-                                maxLength: 6,
-                                style: const TextStyle(color: Colors.white, letterSpacing: 4),
-                                decoration: InputDecoration(
-                                  hintText: 'Enter OTP',
-                                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-                                  counterText: '',
-                                  filled: true,
-                                  fillColor: const Color(0xFF0f0f23).withOpacity(0.5),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              height: 48,
-                              child: ElevatedButton(
-                                onPressed: _verifyOtp,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: const Text('Verify', style: TextStyle(color: Colors.white)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 16),
-
-                      // Village Selection
-                      DropdownButtonFormField<String>(
-                        value: _selectedVillage,
-                        dropdownColor: const Color(0xFF1a1a3e),
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _buildInputDecoration('Select Village/Location', Icons.location_on),
-                        items: _villages.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
-                        onChanged: (v) => setState(() {
-                          _selectedVillage = v;
-                          if (v != 'Other') _otherVillageController.clear();
-                        }),
-                      ),
-                      if (_selectedVillage == 'Other') ...[
-                        const SizedBox(height: 16),
-                        TextField(controller: _otherVillageController, style: const TextStyle(color: Colors.white), textCapitalization: TextCapitalization.words, decoration: _buildInputDecoration('Enter Village Name', Icons.home_work)),
-                      ],
-                      const SizedBox(height: 16),
-
-                      // Password Field with Generate Icon
-                      Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0f0f23).withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: _generatedPassword != null && _passwordCopied
-                                ? Colors.green
-                                : Colors.white.withOpacity(0.1),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                child: Text(
-                                  _generatedPassword != null && _passwordCopied 
-                                      ? 'Password Ready ✓' 
-                                      : 'Tap icon to generate password',
-                                  style: TextStyle(
-                                    color: _generatedPassword != null && _passwordCopied 
-                                        ? Colors.green 
-                                        : Colors.white.withOpacity(0.4),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              margin: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: _generatedPassword != null && _passwordCopied 
-                                    ? Colors.green 
-                                    : const Color(0xFF6366f1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: IconButton(
-                                onPressed: _generatedPassword != null && _passwordCopied ? null : _generateAndShowPassword,
-                                icon: Icon(
-                                  _generatedPassword != null && _passwordCopied ? Icons.check : Icons.key,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // CAPTCHA
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: const Color(0xFF1a1a3e), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.1))),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(color: const Color(0xFF6366f1).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                              child: Text('$_num1 + $_num2 = ?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(child: TextField(controller: _captchaController, keyboardType: TextInputType.number, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(hintText: 'Answer', hintStyle: TextStyle(color: Colors.white54), border: InputBorder.none, isDense: true))),
-                            IconButton(icon: const Icon(Icons.refresh, color: Color(0xFF6366f1)), onPressed: _generateCaptcha),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Terms
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 24, height: 24, child: Checkbox(value: _acceptedTerms, onChanged: (v) => setState(() => _acceptedTerms = v ?? false), activeColor: const Color(0xFF6366f1), side: BorderSide(color: _acceptedTerms ? const Color(0xFF6366f1) : Colors.orange))),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                text: 'I agree to the ',
-                                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
-                                children: [
-                                  TextSpan(text: 'Terms of Service', style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold), recognizer: TapGestureRecognizer()..onTap = _showTermsDialog),
-                                  const TextSpan(text: ' and '),
-                                  TextSpan(text: 'Privacy Policy', style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold), recognizer: TapGestureRecognizer()..onTap = _showTermsDialog),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Register Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: auth.isLoading ? null : _handleRegister,
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366f1), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
-                          child: auth.isLoading
-                              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Text('Register', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Login Link
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: RichText(
-                    text: TextSpan(
-                      text: 'Already have an account? ',
-                      style: TextStyle(color: Colors.white.withOpacity(0.6)),
-                      children: const [TextSpan(text: 'Sign In', style: TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold))],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Security Badge
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.verified_user, size: 16, color: Colors.green.withOpacity(0.7)),
-                    const SizedBox(width: 6),
-                    Text('Your data is protected', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
-                  ],
+                const SizedBox(height: 8),
+                Text(
+                  _getSubtitles()[_currentStep],
+                  style: TextStyle(fontSize: 15, color: Colors.white.withOpacity(0.9)),
                 ),
               ],
             ),
           ),
+
+          // White card
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              constraints: BoxConstraints(maxHeight: size.height * 0.65),
+              padding: const EdgeInsets.fromLTRB(28, 32, 28, 36),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [BoxShadow(color: Color(0x1A000000), blurRadius: 20, offset: Offset(0, -5))],
+              ),
+              child: SingleChildScrollView(
+                child: _buildCurrentStep(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String> _getTitles() => ['Your Info', 'Verify Phone', 'Create Password'];
+  List<String> _getSubtitles() => ['Tell us about yourself', 'We\'ll send a code', 'Secure your account'];
+
+  Widget _buildCircle(double size, Color color) {
+    return Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: color));
+  }
+
+  Widget _buildCurrentStep() {
+    switch (_currentStep) {
+      case 0: return _buildInfoStep();
+      case 1: return _buildVerifyStep();
+      case 2: return _buildPasswordStep();
+      default: return const SizedBox();
+    }
+  }
+
+  Widget _buildInfoStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel('Full Name'),
+        _buildTextField(_nameController, 'Enter your name', Icons.person_outline, TextInputType.name, cap: TextCapitalization.words),
+        const SizedBox(height: 20),
+        
+        _buildLabel('Phone Number'),
+        _buildTextField(_phoneController, '7XX XXX XXX', Icons.phone_outlined, TextInputType.phone, prefix: '+254'),
+        const SizedBox(height: 20),
+        
+        _buildLabel('National ID'),
+        _buildTextField(_idController, 'Enter ID number', Icons.badge_outlined, TextInputType.number),
+        const SizedBox(height: 20),
+        
+        _buildLabel('Village'),
+        _buildDropdown(),
+        
+        if (_selectedVillage == 'Other') ...[
+          const SizedBox(height: 16),
+          _buildTextField(_otherVillageController, 'Enter village name', Icons.location_on_outlined, TextInputType.text),
+        ],
+        
+        const SizedBox(height: 32),
+        _buildButton('Continue', _nextStep),
+      ],
+    );
+  }
+
+  Widget _buildVerifyStep() {
+    return Column(
+      children: [
+        Container(
+          width: 80, height: 80,
+          decoration: BoxDecoration(
+            color: _otpVerified ? const Color(0xFF4CAF50) : primaryPink,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(_otpVerified ? Icons.check : Icons.sms_outlined, color: Colors.white, size: 40),
         ),
+        const SizedBox(height: 24),
+        Text(
+          _otpVerified ? 'Verified!' : 'Verify Phone',
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: textDark),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _otpVerified ? 'Your phone is verified' : 'We\'ll send a code to +254${_phoneController.text}',
+          style: TextStyle(color: textMuted),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 32),
+        
+        if (!_otpVerified) ...[
+          if (!_otpSent) ...[
+            _buildButton(_isLoading ? 'Sending...' : 'Send OTP', _isLoading ? null : _sendOtp),
+          ] else ...[
+            _buildTextField(_otpController, 'Enter 6-digit code', Icons.lock_outline, TextInputType.number),
+            const SizedBox(height: 20),
+            _buildButton('Verify', _verifyOtp),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: _sendOtp,
+              child: const Text('Resend Code', style: TextStyle(color: primaryPink)),
+            ),
+          ],
+        ] else ...[
+          _buildButton('Continue', _nextStep),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPasswordStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel('Password'),
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField(_passwordController, 'Min 8 characters', Icons.lock_outline, TextInputType.text, obscure: true),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              decoration: BoxDecoration(color: primaryPink, borderRadius: BorderRadius.circular(14)),
+              child: IconButton(
+                onPressed: _generatePassword,
+                icon: const Icon(Icons.auto_awesome, color: Colors.white),
+                tooltip: 'Generate Password',
+              ),
+            ),
+          ],
+        ),
+        if (_generatedPassword.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF4CAF50).withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 18),
+                const SizedBox(width: 8),
+                const Text('Password copied to clipboard', style: TextStyle(color: Color(0xFF166534), fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 28),
+        
+        Row(
+          children: [
+            SizedBox(
+              width: 22, height: 22,
+              child: Checkbox(
+                value: _agreedToTerms,
+                onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
+                activeColor: primaryPink,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text('I agree to the Terms of Service and Privacy Policy', style: TextStyle(color: textMuted, fontSize: 13)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 32),
+        
+        _buildButton(_isLoading ? 'Creating Account...' : 'Create Account', _isLoading ? null : _handleRegister),
+      ],
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: textDark)),
+    );
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint,
+    IconData icon,
+    TextInputType type, {
+    TextCapitalization cap = TextCapitalization.none,
+    String? prefix,
+    bool obscure = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: type,
+        textCapitalization: cap,
+        obscureText: obscure,
+        style: const TextStyle(fontSize: 15, color: textDark),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Color(0xFF999999)),
+          prefixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(width: 16),
+              Icon(icon, color: primaryPink, size: 22),
+              if (prefix != null) ...[
+                const SizedBox(width: 10),
+                Text(prefix, style: const TextStyle(color: textMuted, fontWeight: FontWeight.w500)),
+              ],
+              const SizedBox(width: 12),
+            ],
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 0),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+      ),
+      child: DropdownButtonFormField<String>(
+        value: _selectedVillage,
+        hint: const Text('Select village', style: TextStyle(color: Color(0xFF999999))),
+        icon: const Icon(Icons.keyboard_arrow_down, color: primaryPink),
+        decoration: const InputDecoration(
+          prefixIcon: Icon(Icons.location_on_outlined, color: primaryPink, size: 22),
+          prefixIconConstraints: BoxConstraints(minWidth: 40),
+          border: InputBorder.none,
+        ),
+        items: _villages.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+        onChanged: (v) => setState(() => _selectedVillage = v),
+      ),
+    );
+  }
+
+  Widget _buildButton(String text, VoidCallback? onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryPink,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          disabledBackgroundColor: primaryPink.withOpacity(0.5),
+        ),
+        child: Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
       ),
     );
   }

@@ -16,6 +16,13 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
   List<dynamic> _issues = [];
   bool _isLoading = true;
 
+  // Theme colors
+  static const Color primaryPink = Color(0xFFE8847C);
+  static const Color bgPink = Color(0xFFF9C5C1);
+  static const Color textDark = Color(0xFF333333);
+  static const Color textMuted = Color(0xFF666666);
+  static const Color cardBg = Color(0xFFFFFFFF);
+
   @override
   void initState() {
     super.initState();
@@ -70,99 +77,257 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'resolved': return Colors.green;
-      case 'in_progress': return Colors.orange;
-      default: return Colors.grey;
+      case 'resolved': return const Color(0xFF10B981); // Green
+      case 'in_progress': return const Color(0xFFF59E0B); // Amber/Orange
+      default: return const Color(0xFF6B7280); // Gray
     }
+  }
+
+  String _getStatusLabel(String status) {
+    return status.replaceAll('_', ' ').toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xFF0f0f23), Color(0xFF1a1a3e)]),
-      ),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text('My Reported Issues', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+    // Determine greeting based on time
+    final hour = DateTime.now().hour;
+    String greeting = 'Good Morning';
+    if (hour >= 12 && hour < 17) greeting = 'Good Afternoon';
+    else if (hour >= 17) greeting = 'Good Evening';
+
+    return Scaffold(
+      backgroundColor: bgPink,
+      body: Stack(
+        children: [
+          // Static background decoration (no animation)
+          Positioned(
+            top: -50,
+            right: -50,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: primaryPink.withOpacity(0.3),
+              ),
             ),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _issues.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.inbox, size: 80, color: Colors.white.withOpacity(0.3)),
-                              const SizedBox(height: 16),
-                              Text('No issues reported yet', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-                            ],
-                          ),
+          ),
+          Positioned(
+            top: 100,
+            left: -30,
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.2),
+              ),
+            ),
+          ),
+
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Reported Issues',
+                        style: TextStyle(
+                          fontSize: 28, 
+                          fontWeight: FontWeight.w800, 
+                          color: Colors.white,
+                          letterSpacing: -0.5
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Track the status of your reports', 
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9), 
+                          fontSize: 15
                         )
-                      : RefreshIndicator(
-                          onRefresh: _loadIssues,
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: _issues.length,
-                            itemBuilder: (ctx, i) {
-                              final issue = _issues[i];
-                              return GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => IssueDetailsScreen(issue: issue),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFAFAFA),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                    ),
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator(color: primaryPink))
+                        : _issues.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(20),
+                                      decoration: BoxDecoration(
+                                        color: bgPink.withOpacity(0.3),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.assignment_outlined, size: 60, color: primaryPink.withOpacity(0.6)),
                                     ),
-                                  );
-                                },
-                                child: Card(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  child: ListTile(
-                                    contentPadding: const EdgeInsets.all(16),
-                                    leading: issue['images']?.isNotEmpty == true
-                                        ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: Image.network(issue['images'][0], width: 60, height: 60, fit: BoxFit.cover),
-                                          )
-                                        : Container(
-                                            width: 60, height: 60,
-                                            decoration: BoxDecoration(color: const Color(0xFF6366f1).withOpacity(0.3), borderRadius: BorderRadius.circular(8)),
-                                            child: const Icon(Icons.image, color: Color(0xFF6366f1)),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'No issues reported yet', 
+                                      style: TextStyle(
+                                        color: textMuted, 
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16
+                                      )
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Reports you submit will appear here', 
+                                      style: TextStyle(
+                                        color: textMuted, 
+                                        fontSize: 14
+                                      )
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : RefreshIndicator(
+                                onRefresh: _loadIssues,
+                                color: primaryPink,
+                                child: ListView.builder(
+                                  padding: const EdgeInsets.all(20),
+                                  itemCount: _issues.length,
+                                  itemBuilder: (ctx, i) {
+                                    final issue = _issues[i];
+                                    final status = issue['status'] ?? 'pending';
+                                    final statusColor = _getStatusColor(status);
+                                    
+                                    return GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => IssueDetailsScreen(issue: issue),
                                           ),
-                                    title: Text(issue['title'] ?? 'Untitled', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                    subtitle: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const SizedBox(height: 4),
-                                        Text(issue['category'] ?? '', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
-                                        const SizedBox(height: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: _getStatusColor(issue['status'] ?? 'pending').withOpacity(0.2),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            (issue['status'] ?? 'pending').toUpperCase(),
-                                            style: TextStyle(color: _getStatusColor(issue['status'] ?? 'pending'), fontSize: 10, fontWeight: FontWeight.bold),
+                                        );
+                                      },
+                                      child: Container(
+                                        margin: const EdgeInsets.only(bottom: 16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(20),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.04),
+                                              blurRadius: 15,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Row(
+                                            children: [
+                                              // Image or Icon
+                                              Container(
+                                                width: 70,
+                                                height: 70,
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  color: bgPink.withOpacity(0.3),
+                                                  image: issue['images']?.isNotEmpty == true
+                                                      ? DecorationImage(
+                                                          image: NetworkImage(issue['images'][0]),
+                                                          fit: BoxFit.cover,
+                                                        )
+                                                      : null,
+                                                ),
+                                                child: issue['images']?.isNotEmpty == true
+                                                    ? null
+                                                    : const Icon(Icons.image_outlined, color: primaryPink, size: 30),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              
+                                              // Content
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                      children: [
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                          decoration: BoxDecoration(
+                                                            color: statusColor.withOpacity(0.1),
+                                                            borderRadius: BorderRadius.circular(8),
+                                                          ),
+                                                          child: Text(
+                                                            _getStatusLabel(status),
+                                                            style: TextStyle(
+                                                              color: statusColor, 
+                                                              fontSize: 10, 
+                                                              fontWeight: FontWeight.bold,
+                                                              letterSpacing: 0.5
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        
+                                                        const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFFD1D5DB)),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    Text(
+                                                      issue['title'] ?? 'Untitled Issue', 
+                                                      style: const TextStyle(
+                                                        color: textDark, 
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 16
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Row(
+                                                      children: [
+                                                        Icon(Icons.location_on_outlined, size: 14, color: textMuted.withOpacity(0.7)),
+                                                        const SizedBox(width: 4),
+                                                        Expanded(
+                                                          child: Text(
+                                                            issue['location'] ?? 'Unknown Location', 
+                                                            style: const TextStyle(
+                                                              color: textMuted, 
+                                                              fontSize: 13
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
-                        ),
+                              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

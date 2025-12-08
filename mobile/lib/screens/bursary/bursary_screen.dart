@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/supabase_service.dart';
@@ -18,6 +17,15 @@ class _BursaryScreenState extends State<BursaryScreen> {
   List<dynamic> _applications = [];
   bool _isLoading = true;
   bool _showForm = false;
+  int _currentStep = 0;
+  bool _isSubmitting = false;
+
+  // Theme colors
+  static const Color primaryPink = Color(0xFFE8847C);
+  static const Color lightPink = Color(0xFFF5ADA7);
+  static const Color bgPink = Color(0xFFF9C5C1);
+  static const Color textDark = Color(0xFF333333);
+  static const Color textMuted = Color(0xFF666666);
 
   // Form controllers
   final _institutionController = TextEditingController();
@@ -25,142 +33,69 @@ class _BursaryScreenState extends State<BursaryScreen> {
   final _courseController = TextEditingController();
   final _yearController = TextEditingController(text: '1');
   final _annualFeesController = TextEditingController();
-  // Amount requested removed as per feedback
   final _guardianNameController = TextEditingController();
-  
-  // New fields
-  bool _hasHelb = false;
-  bool _hasGoKSponsorship = false;
-  final _sponsorshipDetailsController = TextEditingController();
   final _guardianPhoneController = TextEditingController();
   final _reasonController = TextEditingController();
+  final _sponsorshipDetailsController = TextEditingController();
+  
+  bool _hasHelb = false;
+  bool _hasGoKSponsorship = false;
   String _institutionType = 'university';
   String _guardianRelation = 'parent';
-  bool _isSubmitting = false;
 
   final List<String> _institutions = [
-    'University of Nairobi',
-    'Kenyatta University',
-    'Moi University',
-    'Jomo Kenyatta University of Agriculture and Technology',
-    'Egerton University',
-    'Maseno University',
-    'Masinde Muliro University of Science and Technology',
-    'Dedan Kimathi University of Technology',
-    'Technical University of Kenya',
-    'Technical University of Mombasa',
-    'Pwani University',
-    'Kisii University',
-    'University of Eldoret',
-    'Maasai Mara University',
-    'Jaramogi Oginga Odinga University of Science and Technology',
-    'Laikipia University',
-    'South Eastern Kenya University',
-    'Meru University of Science and Technology',
-    'Multi-Media University of Kenya',
-    'University of Kabianga',
-    'Karatina University',
-    'Chuka University',
-    'Mount Kenya University',
-    'Strathmore University',
-    'USIU Africa',
-    'Daystar University',
-    'Catholic University of Eastern Africa',
-    'KCA University',
-    'Kabarak University',
-    'Riara University',
-    'Zetech University',
-    'Machakos University',
-    'Embu University',
-    'Kirinyaga University',
-    'Muranga University of Technology',
-    'Rongo University',
-    'Taita Taveta University',
-    'Kenya Coast National Polytechnic',
-    'Nyeri National Polytechnic',
-    'Kisumu National Polytechnic',
-    'Eldoret National Polytechnic',
-    'Kabete National Polytechnic',
-    'Meru National Polytechnic',
-    'Nairobi Technical Training Institute',
-    'Kenya School of Government',
-    'Kenya Medical Training College (KMTC)',
-    'Teachers Training College (TTC)',
-    'Rift Valley Technical Training Institute',
-    'Sigalagala National Polytechnic',
-    'Kisii National Polytechnic',
-    'Nyeri National Polytechnic',
-    'Thika Technical Training Institute',
-    'Kiambu Institute of Science and Technology',
-    'Machakos Institute of Technology',
-    'Other'
+    'University of Nairobi', 'Kenyatta University', 'Moi University',
+    'Jomo Kenyatta University', 'Egerton University', 'Maseno University',
+    'Technical University of Kenya', 'Mt Kenya University', 'Strathmore University',
+    'USIU Africa', 'KCA University', 'Machakos University', 'KMTC', 'Other'
   ];
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadApplications();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadApplications());
   }
 
   Future<void> _loadApplications() async {
     final auth = context.read<AuthService>();
     final userId = auth.user?['id']?.toString();
-    
     if (userId == null || userId.isEmpty) {
       if (mounted) setState(() => _isLoading = false);
       return;
     }
 
-    // 1. Load from cache immediately
     final cachedApps = StorageService.getCachedBursaries();
     if (cachedApps.isNotEmpty && mounted) {
-      setState(() {
-        _applications = cachedApps;
-        _isLoading = false; 
-      });
+      setState(() { _applications = cachedApps; _isLoading = false; });
     }
 
-    // 2. Fetch fresh data from network - try Dashboard first, then Supabase
     try {
       if (await StorageService.isOnline()) {
-        // Try dashboard API first
         var loadedApps = await DashboardService.getMyBursaryApplications();
-        
-        // Fallback to Supabase if dashboard returns empty
         if (loadedApps.isEmpty && userId.isNotEmpty) {
           loadedApps = await SupabaseService.getMyBursaryApplications(userId);
         }
-        
         if (mounted) {
-          setState(() {
-            _applications = loadedApps;
-            _isLoading = false;
-          });
+          setState(() { _applications = loadedApps; _isLoading = false; });
           await StorageService.cacheBursaries(loadedApps);
         }
-      } else if (_applications.isEmpty) {
-         if (mounted) {
-           setState(() => _isLoading = false);
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Offline. No cached data found.'), backgroundColor: Colors.orange),
-           );
-         }
       }
     } catch (e) {
-      if (mounted && _applications.isEmpty) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted && _applications.isEmpty) setState(() => _isLoading = false);
     }
   }
 
+  void _nextStep() {
+    if (_currentStep < 3) setState(() => _currentStep++);
+  }
+
+  void _prevStep() {
+    if (_currentStep > 0) setState(() => _currentStep--);
+  }
+
   Future<void> _submitApplication() async {
-    if (_institutionController.text.isEmpty || _courseController.text.isEmpty ||
-        _reasonController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all required fields'), backgroundColor: Colors.red),
-      );
+    if (_institutionController.text.isEmpty || _courseController.text.isEmpty || _reasonController.text.isEmpty) {
+      _showError('Please fill all required fields');
       return;
     }
 
@@ -168,12 +103,10 @@ class _BursaryScreenState extends State<BursaryScreen> {
 
     try {
       final auth = context.read<AuthService>();
-      
-      // Pack extra details into reason since schema is limited
       final verboseReason = '''
 ${_reasonController.text}
 
---- Additional Details ---
+Additional Details:
 Admission: ${_admissionController.text}
 Fees: ${_annualFeesController.text}
 Guardian: ${_guardianNameController.text} (${_guardianRelation}) - ${_guardianPhoneController.text}
@@ -181,7 +114,6 @@ HELB: ${_hasHelb ? 'Yes' : 'No'}
 Other Sponsorship: ${_hasGoKSponsorship ? 'Yes' : 'No'} ${_hasGoKSponsorship ? '(${_sponsorshipDetailsController.text})' : ''}
 ''';
 
-      // Try dashboard API first, fallback to Supabase
       var result = await DashboardService.applyForBursary(
         institutionName: _institutionController.text,
         course: _courseController.text,
@@ -191,7 +123,6 @@ Other Sponsorship: ${_hasGoKSponsorship ? 'Yes' : 'No'} ${_hasGoKSponsorship ? '
         amountRequested: double.tryParse(_annualFeesController.text.replaceAll(',', '')),
       );
       
-      // Fallback to Supabase if dashboard fails
       if (result['success'] != true && auth.user != null) {
         result = await SupabaseService.applyForBursary(
           userId: auth.user!['id'],
@@ -205,28 +136,13 @@ Other Sponsorship: ${_hasGoKSponsorship ? 'Yes' : 'No'} ${_hasGoKSponsorship ? '
       }
 
       if (result['success'] == true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(
-              content: Text('Application submitted successfully! 🎓'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          setState(() {
-            _showForm = false;
-            _clearForm();
-            _loadApplications(); // Reload list
-          });
-        }
+        _showSuccess('Application submitted!');
+        setState(() { _showForm = false; _currentStep = 0; _clearForm(); _loadApplications(); });
       } else {
-        throw Exception(result['error'] ?? 'Failed to submit application');
+        throw Exception(result['error'] ?? 'Failed to submit');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+      _showError('Error: $e');
     } finally {
       setState(() => _isSubmitting = false);
     }
@@ -238,159 +154,200 @@ Other Sponsorship: ${_hasGoKSponsorship ? 'Yes' : 'No'} ${_hasGoKSponsorship ? '
     _courseController.clear();
     _yearController.text = '1';
     _annualFeesController.clear();
-    // amount cleared removed
     _guardianNameController.clear();
     _guardianPhoneController.clear();
     _reasonController.clear();
-    setState(() {
-      _hasHelb = false;
-      _hasGoKSponsorship = false;
-      _sponsorshipDetailsController.clear();
-    });
+    _sponsorshipDetailsController.clear();
+    _hasHelb = false;
+    _hasGoKSponsorship = false;
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: const Color(0xFFD4635B), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  void _showSuccess(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: const Color(0xFF4CAF50), behavior: SnackBarBehavior.floating),
+    );
   }
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'approved': return Colors.green;
-      case 'denied': return Colors.red;
-      default: return Colors.orange;
+      case 'approved': return const Color(0xFF4CAF50);
+      case 'denied': return const Color(0xFFEF4444);
+      default: return const Color(0xFFF59E0B);
     }
-  }
-
-  InputDecoration _inputDecoration(String hint, IconData icon) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-      prefixIcon: Icon(icon, color: const Color(0xFF6366f1), size: 20),
-      filled: true,
-      fillColor: const Color(0xFF0f0f23).withOpacity(0.5),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFF6366f1)),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bursary Applications'),
-        backgroundColor: const Color(0xFF1a1a3e),
-        actions: [
-          if (!_showForm)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () => setState(() => _showForm = true),
+      body: Stack(
+        children: [
+          // Background
+          Container(width: size.width, height: size.height, color: bgPink),
+          
+          // Decorative circles
+          Positioned(top: -40, right: -60, child: _buildCircle(180, primaryPink.withOpacity(0.4))),
+          Positioned(top: 120, left: -40, child: _buildCircle(120, lightPink.withOpacity(0.5))),
+
+          // Content
+          SafeArea(
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => _showForm ? setState(() { _showForm = false; _currentStep = 0; }) : Navigator.pop(context),
+                        icon: Icon(_showForm ? Icons.arrow_back_ios : Icons.arrow_back_ios, color: Colors.white),
+                      ),
+                      Expanded(
+                        child: Text(
+                          _showForm ? 'New Application' : 'Bursary Applications',
+                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      if (!_showForm)
+                        Container(
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                          child: IconButton(
+                            onPressed: () => setState(() => _showForm = true),
+                            icon: const Icon(Icons.add, color: primaryPink),
+                          ),
+                        )
+                      else
+                        const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+                
+                // Body
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 8),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                    ),
+                    child: _showForm ? _buildApplicationForm() : _buildApplicationsList(),
+                  ),
+                ),
+              ],
             ),
+          ),
         ],
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(colors: [Color(0xFF0f0f23), Color(0xFF1a1a3e)]),
-        ),
-        child: _showForm ? _buildApplicationForm() : _buildApplicationsList(),
       ),
     );
   }
 
+  Widget _buildCircle(double size, Color color) {
+    return Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: color));
+  }
+
   Widget _buildApplicationsList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: primaryPink));
     }
 
     if (_applications.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.school_outlined, size: 80, color: Colors.white.withOpacity(0.3)),
-            const SizedBox(height: 16),
-            Text('No bursary applications yet', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => setState(() => _showForm = true),
-              icon: const Icon(Icons.add),
-              label: const Text('Apply for Bursary'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366f1),
-                foregroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 100, height: 100,
+                decoration: BoxDecoration(color: bgPink, shape: BoxShape.circle),
+                child: const Icon(Icons.school_outlined, size: 50, color: primaryPink),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              const Text('No Applications', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: textDark)),
+              const SizedBox(height: 8),
+              Text('Apply for a bursary to fund your education', style: TextStyle(color: textMuted), textAlign: TextAlign.center),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => setState(() => _showForm = true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryPink,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('Apply Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: _loadApplications,
+      color: primaryPink,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         itemCount: _applications.length,
         itemBuilder: (ctx, i) {
           final app = _applications[i];
-          return Card(
-            color: const Color(0xFF1a1a3e),
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        app['applicationNumber'] ?? '',
-                        style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold),
+          final status = (app['status'] ?? 'pending').toString().toLowerCase();
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F8F8),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _getStatusColor(status).withOpacity(0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(app['applicationNumber'] ?? '#${i + 1}', style: const TextStyle(color: primaryPink, fontWeight: FontWeight.w600)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(status).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(app['status'] ?? '').withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          (app['status'] ?? 'pending').toUpperCase(),
-                          style: TextStyle(
-                            color: _getStatusColor(app['status'] ?? ''),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    app['institutionName'] ?? '',
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                  Text(
-                    app['course'] ?? '',
-                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      if (app['status'] == 'approved') 
-                        Text(
-                          'Approved: KES ${app['amountApproved'] ?? 0}',
-                          style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                    ],
+                      child: Text(status.toUpperCase(), style: TextStyle(color: _getStatusColor(status), fontSize: 11, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(app['institutionName'] ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textDark)),
+                const SizedBox(height: 4),
+                Text(app['course'] ?? '', style: TextStyle(color: textMuted)),
+                if (status == 'approved') ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4CAF50).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 16),
+                        const SizedBox(width: 6),
+                        Text('Approved: KES ${app['amountApproved'] ?? 0}', style: const TextStyle(color: Color(0xFF4CAF50), fontWeight: FontWeight.w600, fontSize: 13)),
+                      ],
+                    ),
                   ),
                 ],
-              ),
+              ],
             ),
           );
         },
@@ -399,248 +356,313 @@ Other Sponsorship: ${_hasGoKSponsorship ? 'Yes' : 'No'} ${_hasGoKSponsorship ? '
   }
 
   Widget _buildApplicationForm() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => setState(() => _showForm = false),
-              ),
-              const Text('New Application', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Institution Section
-          _buildFormSection(
-            title: 'Institution Details',
-            icon: Icons.school,
-            children: [
-              Autocomplete<String>(
-                optionsBuilder: (TextEditingValue textEditingValue) {
-                  if (textEditingValue.text == '') {
-                    return const Iterable<String>.empty();
-                  }
-                  return _institutions.where((String option) {
-                    return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
-                  });
-                },
-                onSelected: (String selection) {
-                  _institutionController.text = selection;
-                },
-                fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-                  textEditingController.addListener(() {
-                     _institutionController.text = textEditingController.text;
-                  });
-                  return TextField(
-                    controller: textEditingController,
-                    focusNode: focusNode,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Name', Icons.search),
-                  );
-                },
-                optionsViewBuilder: (context, onSelected, options) {
-                  return Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      color: const Color(0xFF1a1a3e),
-                      elevation: 4,
-                      child: Container(
-                        width: 300,
-                        constraints: const BoxConstraints(maxHeight: 200),
-                        child: ListView.builder(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          itemCount: options.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            final String option = options.elementAt(index);
-                            return ListTile(
-                              title: Text(option, style: const TextStyle(color: Colors.white)),
-                              onTap: () => onSelected(option),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _institutionType,
-                dropdownColor: const Color(0xFF1a1a3e),
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Type', Icons.category),
-                items: const [
-                  DropdownMenuItem(value: 'university', child: Text('University')),
-                  DropdownMenuItem(value: 'college', child: Text('College')),
-                  DropdownMenuItem(value: 'polytechnic', child: Text('Polytechnic')),
-                  DropdownMenuItem(value: 'secondary', child: Text('Secondary')),
-                ],
-                onChanged: (v) => setState(() => _institutionType = v!),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _admissionController,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Adm No', Icons.numbers),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _courseController,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Course', Icons.book),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _yearController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Current Year', Icons.calendar_today),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 20),
-
-          // Financial Section
-          _buildFormSection(
-            title: 'Financial Details',
-            icon: Icons.attach_money,
-            children: [
-              TextField(
-                controller: _annualFeesController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Annual Fees', Icons.payments),
-              ),
-              const SizedBox(height: 12),
-              CheckboxListTile(
-                title: const Text('Do you have HELB Loan?', style: TextStyle(color: Colors.white)),
-                value: _hasHelb,
-                onChanged: (v) => setState(() => _hasHelb = v!),
-                activeColor: const Color(0xFF6366f1),
-                contentPadding: EdgeInsets.zero,
-              ),
-              CheckboxListTile(
-                title: const Text('Any other GoK Sponsorship?', style: TextStyle(color: Colors.white)),
-                value: _hasGoKSponsorship,
-                onChanged: (v) => setState(() => _hasGoKSponsorship = v!),
-                activeColor: const Color(0xFF6366f1),
-                contentPadding: EdgeInsets.zero,
-              ),
-              if (_hasGoKSponsorship) ...[
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _sponsorshipDetailsController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _inputDecoration('Specify Sponsorship', Icons.description),
+    return Column(
+      children: [
+        // Progress bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+          child: Row(
+            children: List.generate(4, (i) => Expanded(
+              child: Container(
+                height: 4,
+                margin: EdgeInsets.only(right: i < 3 ? 8 : 0),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(2),
+                  color: i <= _currentStep ? primaryPink : Colors.grey.shade200,
                 ),
+              ),
+            )),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(['Institution', 'Financial', 'Guardian', 'Reason'][_currentStep], style: TextStyle(color: textMuted, fontSize: 13)),
+        ),
+        
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            child: _buildCurrentStep(),
+          ),
+        ),
+        
+        // Buttons
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            children: [
+              if (_currentStep > 0) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _prevStep,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: textDark,
+                      side: BorderSide(color: Colors.grey.shade300),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('Back'),
+                  ),
+                ),
+                const SizedBox(width: 16),
               ],
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Guardian Section
-          _buildFormSection(
-            title: 'Guardian Details',
-            icon: Icons.people,
-            children: [
-              TextField(
-                controller: _guardianNameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Full Name', Icons.person),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _guardianPhoneController,
-                keyboardType: TextInputType.phone,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Phone Number', Icons.phone),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _guardianRelation,
-                dropdownColor: const Color(0xFF1a1a3e),
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Relationship', Icons.family_restroom),
-                items: const [
-                  DropdownMenuItem(value: 'parent', child: Text('Parent')),
-                  DropdownMenuItem(value: 'guardian', child: Text('Guardian')),
-                  DropdownMenuItem(value: 'sibling', child: Text('Sibling')),
-                  DropdownMenuItem(value: 'other', child: Text('Other')),
-                ],
-                onChanged: (v) => setState(() => _guardianRelation = v!),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _currentStep < 3 ? _nextStep : (_isSubmitting ? null : _submitApplication),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryPink,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text(_currentStep < 3 ? 'Next' : (_isSubmitting ? 'Submitting...' : 'Submit'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                ),
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
 
-          const SizedBox(height: 20),
+  Widget _buildCurrentStep() {
+    switch (_currentStep) {
+      case 0: return _buildInstitutionStep();
+      case 1: return _buildFinancialStep();
+      case 2: return _buildGuardianStep();
+      case 3: return _buildReasonStep();
+      default: return const SizedBox();
+    }
+  }
 
-          // Reason Section
-          _buildFormSection(
-            title: 'Reason for Application',
-            icon: Icons.edit_note,
-            children: [
-              TextField(
-                controller: _reasonController,
-                maxLines: 4,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Explain why you need this bursary...', Icons.description),
-              ),
-            ],
+  Widget _buildInstitutionStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel('Institution'),
+        _buildDropdownField(_institutions, _institutionController.text.isEmpty ? null : _institutionController.text, (v) => _institutionController.text = v ?? ''),
+        const SizedBox(height: 16),
+        _buildLabel('Type'),
+        _buildTypeSelector(),
+        const SizedBox(height: 16),
+        _buildLabel('Admission Number'),
+        _buildTextField(_admissionController, 'Enter admission no.', Icons.badge_outlined),
+        const SizedBox(height: 16),
+        _buildLabel('Course'),
+        _buildTextField(_courseController, 'Enter course name', Icons.book_outlined),
+        const SizedBox(height: 16),
+        _buildLabel('Year of Study'),
+        _buildTextField(_yearController, '1', Icons.calendar_today_outlined, keyboardType: TextInputType.number),
+      ],
+    );
+  }
+
+  Widget _buildFinancialStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel('Annual Fees (KES)'),
+        _buildTextField(_annualFeesController, 'Enter amount', Icons.payments_outlined, keyboardType: TextInputType.number),
+        const SizedBox(height: 20),
+        _buildSwitch('Do you have HELB Loan?', _hasHelb, (v) => setState(() => _hasHelb = v)),
+        _buildSwitch('Any other GoK Sponsorship?', _hasGoKSponsorship, (v) => setState(() => _hasGoKSponsorship = v)),
+        if (_hasGoKSponsorship) ...[
+          const SizedBox(height: 16),
+          _buildTextField(_sponsorshipDetailsController, 'Specify sponsorship', Icons.info_outline),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildGuardianStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel('Guardian Name'),
+        _buildTextField(_guardianNameController, 'Enter full name', Icons.person_outline),
+        const SizedBox(height: 16),
+        _buildLabel('Guardian Phone'),
+        _buildTextField(_guardianPhoneController, 'Enter phone', Icons.phone_outlined, keyboardType: TextInputType.phone),
+        const SizedBox(height: 16),
+        _buildLabel('Relationship'),
+        _buildRelationSelector(),
+      ],
+    );
+  }
+
+  Widget _buildReasonStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel('Why do you need this bursary?'),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F8F8),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade200),
           ),
-
-          const SizedBox(height: 32),
-
-          // Submit Button
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isSubmitting ? null : _submitApplication,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366f1),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: _isSubmitting
-                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Submit Application', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          child: TextField(
+            controller: _reasonController,
+            maxLines: 6,
+            style: const TextStyle(color: textDark),
+            decoration: InputDecoration(
+              hintText: 'Explain your situation...',
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.all(16),
             ),
           ),
-          const SizedBox(height: 40),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFEF3C7),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.lightbulb_outline, color: Color(0xFFD97706), size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Be specific about your needs for better chances', style: TextStyle(color: Colors.amber.shade900, fontSize: 13)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: textDark)),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String hint, IconData icon, {TextInputType? keyboardType}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        style: const TextStyle(color: textDark),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: Icon(icon, color: primaryPink, size: 22),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownField(List<String> items, String? value, Function(String?) onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        hint: Text('Select institution', style: TextStyle(color: Colors.grey.shade400)),
+        icon: const Icon(Icons.keyboard_arrow_down, color: primaryPink),
+        decoration: const InputDecoration(
+          prefixIcon: Icon(Icons.school_outlined, color: primaryPink, size: 22),
+          prefixIconConstraints: BoxConstraints(minWidth: 40),
+          border: InputBorder.none,
+        ),
+        items: items.map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildTypeSelector() {
+    final types = ['university', 'college', 'polytechnic', 'secondary'];
+    final labels = ['Uni', 'College', 'Poly', 'School'];
+    return Row(
+      children: List.generate(types.length, (i) => Expanded(
+        child: GestureDetector(
+          onTap: () => setState(() => _institutionType = types[i]),
+          child: Container(
+            margin: EdgeInsets.only(right: i < 3 ? 8 : 0),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: _institutionType == types[i] ? primaryPink : const Color(0xFFF8F8F8),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _institutionType == types[i] ? primaryPink : Colors.grey.shade200),
+            ),
+            child: Text(
+              labels[i],
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _institutionType == types[i] ? Colors.white : textMuted,
+                fontWeight: _institutionType == types[i] ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+        ),
+      )),
+    );
+  }
+
+  Widget _buildSwitch(String title, bool value, Function(bool) onChanged) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F8),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: Text(title, style: const TextStyle(color: textDark))),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: primaryPink,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFormSection({required String title, required IconData icon, required List<Widget> children}) {
-    return Card(
-      color: const Color(0xFF1a1a3e),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: const Color(0xFF6366f1)),
-                const SizedBox(width: 10),
-                Text(title, style: const TextStyle(color: Color(0xFF6366f1), fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const Divider(color: Colors.white24, height: 24),
-            ...children,
-          ],
+  Widget _buildRelationSelector() {
+    final relations = ['parent', 'guardian', 'sibling', 'other'];
+    final icons = [Icons.family_restroom, Icons.person_outline, Icons.people_outline, Icons.more_horiz];
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: List.generate(relations.length, (i) => GestureDetector(
+        onTap: () => setState(() => _guardianRelation = relations[i]),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: _guardianRelation == relations[i] ? primaryPink : const Color(0xFFF8F8F8),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _guardianRelation == relations[i] ? primaryPink : Colors.grey.shade200),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icons[i], color: _guardianRelation == relations[i] ? Colors.white : textMuted, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                relations[i][0].toUpperCase() + relations[i].substring(1),
+                style: TextStyle(color: _guardianRelation == relations[i] ? Colors.white : textMuted),
+              ),
+            ],
+          ),
         ),
-      ),
+      )),
     );
   }
 }

@@ -121,7 +121,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     setState(() => _passwordCopied = true);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Password copied! ✅'), backgroundColor: Colors.green, duration: Duration(seconds: 1)),
+                        const SnackBar(content: Text('Password copied!'), backgroundColor: Colors.green, duration: Duration(seconds: 1)),
                       );
                     }
                   },
