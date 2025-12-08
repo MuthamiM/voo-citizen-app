@@ -30,7 +30,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    // Only show full screen loader if we have no data
+    if (_announcements.isEmpty && _emergencyContacts.length <= 4) {
+      setState(() => _isLoading = true);
+    }
     
     // Check connectivity
     final isOnline = await StorageService.isOnline();
@@ -42,9 +45,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
           _announcements = cachedAnnouncements;
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You are offline. Showing cached data.'), backgroundColor: Colors.orange),
-        );
+        // Only show snackbar if we really need to
+        if (_announcements.isEmpty) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('You are offline. Showing cached data.'), backgroundColor: Colors.orange),
+          );
+        }
       }
       return;
     }
@@ -55,23 +61,35 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
       if (announcementsRes.statusCode == 200) {
         final data = jsonDecode(announcementsRes.body)['announcements'] ?? [];
-        _announcements = data;
+        if (mounted) {
+          setState(() {
+            _announcements = data;
+          });
+        }
         StorageService.cacheAnnouncements(data);
       }
       if (contactsRes.statusCode == 200) {
         final contacts = jsonDecode(contactsRes.body)['contacts'] ?? [];
-        if (contacts.isNotEmpty) _emergencyContacts = contacts;
+        if (contacts.isNotEmpty && mounted) {
+          setState(() {
+             _emergencyContacts = contacts;
+          });
+        }
       }
     } catch (e) {
       // Fallback to cache if API fails
-      _announcements = StorageService.getCachedAnnouncements();
+      final cached = StorageService.getCachedAnnouncements();
       if (mounted) {
+         setState(() {
+           _announcements = cached;
+         });
          ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Connection failed. Showing cached data.'), backgroundColor: Colors.orange),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    if (mounted) setState(() => _isLoading = false);
   }
 
   void _showCallDialog(String name, String phone) {
@@ -290,6 +308,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   filled: true,
                   fillColor: const Color(0xFF0f0f23).withOpacity(0.5),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white10)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF6366f1))),
                 ),
               ),
               const SizedBox(height: 12),
@@ -303,6 +323,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   filled: true,
                   fillColor: const Color(0xFF0f0f23).withOpacity(0.5),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white10)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF6366f1))),
                 ),
               ),
               const SizedBox(height: 20),
@@ -362,6 +384,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   filled: true,
                   fillColor: const Color(0xFF0f0f23).withOpacity(0.5),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white10)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF6366f1))),
                 ),
               ),
               const SizedBox(height: 20),

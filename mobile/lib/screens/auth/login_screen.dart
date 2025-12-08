@@ -19,10 +19,25 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _phoneFocusNode = FocusNode();
   bool _obscurePassword = true;
   bool _acceptedTerms = false;
   bool _rememberMe = false;
   bool _isGoogleLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneFocusNode.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _phoneFocusNode.dispose();
+    super.dispose();
+  }
 
   void _showTermsDialog() {
     showDialog(
@@ -220,6 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Phone Field
                         TextField(
                           controller: _phoneController,
+                          focusNode: _phoneFocusNode,
                           keyboardType: TextInputType.phone,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
@@ -231,15 +247,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   const Icon(Icons.phone_android, color: Color(0xFF6366f1)),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF6366f1).withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(4),
+                                  if (_phoneFocusNode.hasFocus || _phoneController.text.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF6366f1).withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('+254', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                     ),
-                                    child: const Text('+254', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                  ),
+                                  ],
                                 ],
                               ),
                             ),

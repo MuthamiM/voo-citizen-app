@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
-import '../../services/phone_auth_service.dart';
+import '../../utils/password_generator.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -15,37 +16,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _idController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+  final _otherVillageController = TextEditingController();
+  final _captchaController = TextEditingController();
+  final _phoneFocusNode = FocusNode();
+  
   bool _acceptedTerms = false;
   String? _selectedVillage;
+  String? _generatedPassword;
+  bool _passwordCopied = false;
   
   final _villages = [
     'Muthungue', 'Nditime', 'Maskikalini', 'Kamwiu', 'Ituusya', 'Ivitasya',
     'Kyamatu/Nzanzu', 'Nzunguni', 'Kasasi', 'Kaluasi', 'Other'
   ];
 
-  final _otherVillageController = TextEditingController();
-
   // CAPTCHA State
   late int _num1;
   late int _num2;
   late int _captchaResult;
-  final _captchaController = TextEditingController();
-
-  // OTP State
-  bool _otpSent = false;
-  bool _otpVerified = false;
-  bool _sendingOtp = false;
-  bool _verifyingOtp = false;
-  final _otpController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _phoneFocusNode.addListener(() => setState(() {}));
     _generateCaptcha();
+  }
+
+  @override
+  void dispose() {
+    _phoneFocusNode.dispose();
+    super.dispose();
   }
 
   void _generateCaptcha() {
@@ -72,25 +72,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 8),
               Text(
                 '1. ACCEPTANCE OF TERMS\n'
-                'By accessing and using the VOO Citizen platform ("the Service"), you explicitly acknowledge and agree to be bound by these Terms of Service. The Service is designed to facilitate civic engagement and community reporting.\n\n'
-                '2. USER RESPONSIBILITIES & CONDUCT\n'
-                'Users are strictly prohibited from submitting false, misleading, or malicious reports. You warrant that all information provided is accurate. To maintain the integrity, security, and reliability of the Service, the Administration reserves the unequivocal right to monitor all user interactions, analyze behavioral patterns, and cross-reference submitted data against internal and external databases.\n\n'
-                '3. DEVICE ACCESS & DATA USAGE\n'
-                'To verify the authenticity of reports and prevent fraudulent activities, the Service requires access to specific device capabilities. By continuing, you expressly grant the Service permission to access, collect, and store unique device identifiers (including but not limited to IMEI, IMSI, and MAC addresses), precise geolocation data, and multimedia files. This data is essential for the "Proof of Location" and "Proof of Device" verification protocols mandated by the security infrastructure.\n\n'
-                '4. INTELLECTUAL PROPERTY\n'
-                'All content submitted to the Service becomes the property of the Administration for the purpose of issue resolution and civic planning.',
+                'By accessing and using the VOO Citizen platform, you agree to be bound by these Terms of Service.\n\n'
+                '2. USER RESPONSIBILITIES\n'
+                'Users are prohibited from submitting false or malicious reports. All information provided must be accurate.\n\n'
+                '3. DATA USAGE\n'
+                'The Service may access device identifiers and location data for verification purposes.',
                 style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11, height: 1.4),
               ),
               const SizedBox(height: 16),
               const Text('Privacy Policy', style: TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text(
-                '1. DATA COLLECTION FRAMEWORK\n'
-                'We implement a comprehensive data collection framework to ensure service delivery. This includes Personal Identifiable Information (PII) such as National ID, Phone Number, and Biometric data where applicable. Furthermore, technical telemetry including device IMEI, hardware serial numbers, operating system version, and network carrier information is automatically aggregated to facilitate security auditing and device fingerprinting.\n\n'
-                '2. DATA SECURITY & SHARING\n'
-                'While we employ industry-standard encryption protocols (AES-256) to protect your data at rest and in transit, you acknowledge that no system is entirely impenetrable. Data may be shared with relevant municipal authorities, law enforcement agencies, and authorized third-party contractors for the strict purpose of valid issue resolution and investigatory compliance.\n\n'
-                '3. CONSENT\n'
-                'Your continued use of this application constitutes an irrevocable consent to all aforementioned data collection, processing, and monitoring activities.',
+                'We collect Personal Identifiable Information including National ID and Phone Number. '
+                'Data is secured with encryption and may be shared with relevant authorities for issue resolution.',
                 style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11, height: 1.4),
               ),
             ],
@@ -106,98 +100,131 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Send OTP to phone number
-  Future<void> _sendOTP() async {
-    if (_phoneController.text.isEmpty) {
+  // Generate password and show dialog
+  void _generateAndShowPassword() {
+    if (_nameController.text.isEmpty || _phoneController.text.isEmpty || _idController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your phone number'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Please fill in all required fields first'), backgroundColor: Colors.red),
       );
       return;
     }
 
-    setState(() => _sendingOtp = true);
+    final password = PasswordGenerator.generate(length: 12);
+    setState(() {
+      _generatedPassword = password;
+      _passwordCopied = false;
+    });
 
-    String phoneNumber = _phoneController.text;
-    if (!phoneNumber.startsWith('+254')) {
-      phoneNumber = '+254$phoneNumber';
-    }
-
-    await PhoneAuthService.sendOTP(
-      phoneNumber: phoneNumber,
-      onCodeSent: (verificationId) {
-        if (mounted) {
-          setState(() {
-            _otpSent = true;
-            _sendingOtp = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('OTP sent! Check your SMS 📱'), backgroundColor: Colors.green),
-          );
-        }
-      },
-      onError: (error) {
-        if (mounted) {
-          setState(() => _sendingOtp = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error), backgroundColor: Colors.red),
-          );
-        }
-      },
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1a1a3e),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.key, color: Color(0xFF6366f1), size: 28),
+              SizedBox(width: 8),
+              Text('Your Password', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Copy this password now! It will not be shown again after you close this dialog.',
+                style: TextStyle(color: Colors.orange.withOpacity(0.9), fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0f0f23),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF6366f1)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SelectableText(
+                      password,
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        letterSpacing: 2,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: password));
+                    setDialogState(() => _passwordCopied = true);
+                    setState(() => _passwordCopied = true);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Password copied! ✅'), backgroundColor: Colors.green, duration: Duration(seconds: 1)),
+                      );
+                    }
+                  },
+                  icon: Icon(_passwordCopied ? Icons.check : Icons.copy, size: 18),
+                  label: Text(_passwordCopied ? 'Copied!' : 'Copy to Clipboard'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _passwordCopied ? Colors.green : const Color(0xFF6366f1),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() => _generatedPassword = null);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: _passwordCopied ? () => Navigator.pop(ctx) : null,
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366f1)),
+              child: const Text('I\'ve Saved It', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
     );
-  }
-
-  // Verify OTP code
-  Future<void> _verifyOTP() async {
-    if (_otpController.text.isEmpty || _otpController.text.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the 6-digit OTP'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-
-    setState(() => _verifyingOtp = true);
-
-    final result = await PhoneAuthService.verifyOTP(otp: _otpController.text);
-
-    if (mounted) {
-      setState(() => _verifyingOtp = false);
-
-      if (result['success'] == true) {
-        setState(() => _otpVerified = true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Phone verified! ✅'), backgroundColor: Colors.green),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['error'] ?? 'Verification failed'), backgroundColor: Colors.red),
-        );
-      }
-    }
   }
 
   Future<void> _handleRegister() async {
     // CAPTCHA Validation
     if (_captchaController.text != _captchaResult.toString()) {
-       ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Incorrect CAPTCHA. Please try again.'), backgroundColor: Colors.red),
       );
       _generateCaptcha();
       return;
     }
 
-    // Validation - basic fields only (OTP is the password now)
-    if (_nameController.text.isEmpty || _phoneController.text.isEmpty ||
-        _idController.text.isEmpty) {
+    // Basic validation
+    if (_nameController.text.isEmpty || _phoneController.text.isEmpty || _idController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields'), backgroundColor: Colors.red),
       );
       return;
     }
 
-    // OTP verification is REQUIRED - the OTP becomes the password
-    if (!_otpVerified) {
+    // Password generation is REQUIRED
+    if (_generatedPassword == null || !_passwordCopied) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please verify your phone number first. The OTP will be your password.'), backgroundColor: Colors.orange),
+        const SnackBar(content: Text('Please generate and copy your password first'), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -209,21 +236,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    // Use the OTP as the password
-    final otpPassword = _otpController.text;
-
     final auth = context.read<AuthService>();
     final result = await auth.register(
       _nameController.text,
       _phoneController.text,
       _idController.text,
-      otpPassword, // Using OTP as password
+      _generatedPassword!,
       village: _selectedVillage == 'Other' ? _otherVillageController.text : _selectedVillage,
     );
 
     if (mounted) {
       if (result['success']) {
-        // Show dialog with password info
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -241,10 +264,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Your account has been created successfully!',
-                  style: TextStyle(color: Colors.white.withOpacity(0.8)),
-                ),
+                Text('Your account has been created successfully!', style: TextStyle(color: Colors.white.withOpacity(0.8))),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -256,18 +276,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Your Login Credentials:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      const Text('Login with:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
                       Text('Phone: ${_phoneController.text}', style: const TextStyle(color: Colors.white)),
                       const SizedBox(height: 4),
-                      Text('Password: $otpPassword', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 18)),
+                      const Text('Password: (the one you copied)', style: TextStyle(color: Colors.green)),
                     ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '⚠️ Please save this password! You can change it later in Settings.',
-                  style: TextStyle(color: Colors.orange.withOpacity(0.9), fontSize: 12),
                 ),
               ],
             ),
@@ -278,7 +293,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366f1)),
-                child: const Text('Got it, Login Now', style: TextStyle(color: Colors.white)),
+                child: const Text('Go to Login', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -291,26 +306,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  InputDecoration _buildInputDecoration(String hint, IconData icon, {Widget? suffix}) {
+  InputDecoration _buildInputDecoration(String hint, IconData icon, {Widget? suffix, bool showPrefix = false}) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-      prefixIcon: Icon(icon, color: const Color(0xFF6366f1)),
+      prefixIcon: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(width: 12),
+          Icon(icon, color: const Color(0xFF6366f1)),
+          if (showPrefix) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366f1).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text('+254', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+          const SizedBox(width: 12),
+        ],
+      ),
+      prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
       suffixIcon: suffix,
       filled: true,
       fillColor: const Color(0xFF0f0f23).withOpacity(0.5),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF6366f1), width: 2),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF6366f1), width: 2)),
     );
   }
 
@@ -321,56 +346,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1a1a3e), Color(0xFF0f0f23)],
-          ),
+          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1a1a3e), Color(0xFF0f0f23)]),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
             child: Column(
               children: [
-                // Back button and title
+                // Header
                 Row(
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Sign Up',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ),
+                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back_ios, color: Colors.white)),
+                    const Expanded(child: Text('Sign Up', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white))),
                   ],
                 ),
                 const SizedBox(height: 20),
 
-                // Logo with white background
+                // Logo
                 Container(
-                  width: 80,
-                  height: 80,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                  ),
+                  width: 80, height: 80,
+                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
                   child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.white,
-                        child: const Icon(Icons.location_city, size: 40, color: Color(0xFF6366f1)),
-                      ),
+                    child: Image.asset('assets/images/logo.png', fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.location_city, size: 40, color: Color(0xFF6366f1)),
                     ),
                   ),
                 ),
                 const SizedBox(height: 32),
 
-                // Registration Form
+                // Form
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -380,125 +384,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   child: Column(
                     children: [
-                      // Row 1: Full Name and ID Number
+                      // Name and ID Row
                       Row(
                         children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _nameController,
-                              style: const TextStyle(color: Colors.white),
-                              textCapitalization: TextCapitalization.words,
-                              decoration: _buildInputDecoration('Full Name', Icons.person_outline),
-                            ),
-                          ),
+                          Expanded(child: TextField(controller: _nameController, style: const TextStyle(color: Colors.white), textCapitalization: TextCapitalization.words, decoration: _buildInputDecoration('Full Name', Icons.person_outline))),
                           const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: _idController,
-                              keyboardType: TextInputType.number,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: _buildInputDecoration('National ID', Icons.badge_outlined),
-                            ),
-                          ),
+                          Expanded(child: TextField(controller: _idController, keyboardType: TextInputType.number, style: const TextStyle(color: Colors.white), decoration: _buildInputDecoration('National ID', Icons.badge_outlined))),
                         ],
                       ),
                       const SizedBox(height: 16),
 
-                      // Phone Number with OTP (full width for button)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              style: const TextStyle(color: Colors.white),
-                              enabled: !_otpVerified,
-                              decoration: _buildInputDecoration(
-                                'Phone Number',
-                                Icons.phone_android,
-                                suffix: _otpVerified
-                                    ? const Icon(Icons.check_circle, color: Colors.green)
-                                    : null,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            width: 100,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _otpVerified || _sendingOtp ? null : _sendOTP,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _otpVerified ? Colors.green : const Color(0xFF6366f1),
-                                padding: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: _sendingOtp
-                                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                  : Text(
-                                      _otpVerified ? '✓ Verified' : (_otpSent ? 'Resend' : 'Get OTP'),
-                                      style: const TextStyle(fontSize: 12, color: Colors.white),
-                                    ),
-                            ),
-                          ),
-                        ],
+                      // Phone Number
+                      TextField(
+                        controller: _phoneController,
+                        focusNode: _phoneFocusNode,
+                        keyboardType: TextInputType.phone,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _buildInputDecoration('Phone Number', Icons.phone_android, showPrefix: _phoneFocusNode.hasFocus || _phoneController.text.isNotEmpty),
                       ),
                       const SizedBox(height: 16),
 
-                      // OTP Input (shown after OTP is sent)
-                      if (_otpSent && !_otpVerified) ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _otpController,
-                                keyboardType: TextInputType.number,
-                                maxLength: 6,
-                                style: const TextStyle(color: Colors.white, letterSpacing: 8),
-                                textAlign: TextAlign.center,
-                                decoration: InputDecoration(
-                                  hintText: '------',
-                                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), letterSpacing: 8),
-                                  counterText: '',
-                                  filled: true,
-                                  fillColor: const Color(0xFF0f0f23).withOpacity(0.5),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFF6366f1)),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 100,
-                              height: 50,
-                              child: ElevatedButton(
-                                onPressed: _verifyingOtp ? null : _verifyOTP,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF22c55e),
-                                  padding: EdgeInsets.zero,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: _verifyingOtp
-                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                    : const Text('Verify', style: TextStyle(fontSize: 12, color: Colors.white)),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      
-                      // Village Selection (full width)
+                      // Village Selection
                       DropdownButtonFormField<String>(
                         value: _selectedVillage,
                         dropdownColor: const Color(0xFF1a1a3e),
@@ -509,126 +415,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _selectedVillage = v;
                           if (v != 'Other') _otherVillageController.clear();
                         }),
-                        validator: (v) => v == null ? 'Please select your village' : null,
                       ),
                       if (_selectedVillage == 'Other') ...[
                         const SizedBox(height: 16),
-                        TextField(
-                          controller: _otherVillageController,
-                          style: const TextStyle(color: Colors.white),
-                          textCapitalization: TextCapitalization.words,
-                          decoration: _buildInputDecoration('Enter Village Name', Icons.home_work),
-                        ),
+                        TextField(controller: _otherVillageController, style: const TextStyle(color: Colors.white), textCapitalization: TextCapitalization.words, decoration: _buildInputDecoration('Enter Village Name', Icons.home_work)),
                       ],
                       const SizedBox(height: 16),
 
-                      // Info about OTP as password
-                      if (_otpVerified)
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.green.withOpacity(0.3)),
+                      // Generate Password Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: _generatedPassword != null && _passwordCopied ? null : _generateAndShowPassword,
+                          icon: Icon(_generatedPassword != null && _passwordCopied ? Icons.check : Icons.key),
+                          label: Text(_generatedPassword != null && _passwordCopied ? 'Password Ready ✓' : 'Generate Password'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _generatedPassword != null && _passwordCopied ? Colors.green : const Color(0xFF6366f1),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.check_circle, color: Colors.green, size: 20),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Phone verified! Your OTP will be your password.',
-                                  style: TextStyle(color: Colors.green, fontSize: 12),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6366f1).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFF6366f1).withOpacity(0.3)),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.info_outline, color: Color(0xFF6366f1), size: 20),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Verify your phone to get your password (OTP).',
-                                  style: TextStyle(color: Color(0xFF6366f1), fontSize: 12),
-                                ),
-                              ),
-                            ],
-                          ),
+                        ),
+                      ),
+                      if (_generatedPassword == null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text('A strong password will be generated for you', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
                         ),
                       const SizedBox(height: 20),
 
                       // CAPTCHA
                       Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1a1a3e),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white.withOpacity(0.1)),
-                        ),
+                        decoration: BoxDecoration(color: const Color(0xFF1a1a3e), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withOpacity(0.1))),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6366f1).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '$_num1 + $_num2 = ?',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
+                              decoration: BoxDecoration(color: const Color(0xFF6366f1).withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                              child: Text('$_num1 + $_num2 = ?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                             ),
                             const SizedBox(width: 12),
-                            Expanded(
-                              child: TextField(
-                                controller: _captchaController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
-                                  hintText: 'Answer',
-                                  hintStyle: TextStyle(color: Colors.white54),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.refresh, color: Color(0xFF6366f1)),
-                              onPressed: _generateCaptcha,
-                            ),
+                            Expanded(child: TextField(controller: _captchaController, keyboardType: TextInputType.number, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(hintText: 'Answer', hintStyle: TextStyle(color: Colors.white54), border: InputBorder.none, isDense: true))),
+                            IconButton(icon: const Icon(Icons.refresh, color: Color(0xFF6366f1)), onPressed: _generateCaptcha),
                           ],
                         ),
                       ),
                       const SizedBox(height: 20),
 
-                      // Terms & Policy
+                      // Terms
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Checkbox(
-                              value: _acceptedTerms,
-                              onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
-                              activeColor: const Color(0xFF6366f1),
-                              side: BorderSide(color: _acceptedTerms ? const Color(0xFF6366f1) : Colors.orange),
-                            ),
-                          ),
+                          SizedBox(width: 24, height: 24, child: Checkbox(value: _acceptedTerms, onChanged: (v) => setState(() => _acceptedTerms = v ?? false), activeColor: const Color(0xFF6366f1), side: BorderSide(color: _acceptedTerms ? const Color(0xFF6366f1) : Colors.orange))),
                           const SizedBox(width: 8),
                           Expanded(
                             child: RichText(
@@ -636,17 +475,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 text: 'I agree to the ',
                                 style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
                                 children: [
-                                  TextSpan(
-                                    text: 'Terms of Service',
-                                    style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold),
-                                    recognizer: TapGestureRecognizer()..onTap = _showTermsDialog,
-                                  ),
+                                  TextSpan(text: 'Terms of Service', style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold), recognizer: TapGestureRecognizer()..onTap = _showTermsDialog),
                                   const TextSpan(text: ' and '),
-                                  TextSpan(
-                                    text: 'Privacy Policy',
-                                    style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold),
-                                    recognizer: TapGestureRecognizer()..onTap = _showTermsDialog,
-                                  ),
+                                  TextSpan(text: 'Privacy Policy', style: const TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold), recognizer: TapGestureRecognizer()..onTap = _showTermsDialog),
                                 ],
                               ),
                             ),
@@ -661,18 +492,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         height: 52,
                         child: ElevatedButton(
                           onPressed: auth.isLoading ? null : _handleRegister,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366f1),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 0,
-                          ),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366f1), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
                           child: auth.isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
+                              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                               : const Text('Register', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
@@ -688,12 +510,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     text: TextSpan(
                       text: 'Already have an account? ',
                       style: TextStyle(color: Colors.white.withOpacity(0.6)),
-                      children: const [
-                        TextSpan(
-                          text: 'Sign In',
-                          style: TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                      children: const [TextSpan(text: 'Sign In', style: TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold))],
                     ),
                   ),
                 ),
@@ -705,10 +522,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     Icon(Icons.verified_user, size: 16, color: Colors.green.withOpacity(0.7)),
                     const SizedBox(width: 6),
-                    Text(
-                      'Your data is protected',
-                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
-                    ),
+                    Text('Your data is protected', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
                   ],
                 ),
               ],

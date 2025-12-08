@@ -297,4 +297,60 @@ class SupabaseService {
       return {'success': false, 'error': 'Application failed: $e'};
     }
   }
+  static Future<Map<String, dynamic>> updateUserProfile({
+    required String userId,
+    String? fullName,
+    String? phone,
+    String? email,
+    String? village,
+  }) async {
+    try {
+      final url = '$supabaseUrl/rest/v1/app_users?id=eq.$userId';
+      
+      final Map<String, dynamic> updates = {};
+      if (fullName != null) updates['full_name'] = fullName;
+      if (phone != null) updates['phone'] = phone;
+      if (email != null) updates['email'] = email;
+      if (village != null) updates['village'] = village;
+
+      if (updates.isEmpty) {
+        return {'success': true}; // No changes needed
+      }
+
+      final res = await http.patch(
+        Uri.parse(url),
+        headers: _headers,
+        body: jsonEncode(updates),
+      );
+
+      if (res.statusCode == 200 || res.statusCode == 204) {
+         // Fetch updated user to return
+         final getUrl = '$supabaseUrl/rest/v1/app_users?id=eq.$userId&select=*';
+         final getRes = await http.get(Uri.parse(getUrl), headers: _headers);
+         
+         if (getRes.statusCode == 200) {
+            final users = jsonDecode(getRes.body);
+            if (users is List && users.isNotEmpty) {
+               final user = users.first;
+               return {
+                  'success': true,
+                  'user': {
+                    'id': user['id'],
+                    'fullName': user['full_name'],
+                    'phone': user['phone'],
+                    'email': user['email'], // Ensure email is handled if column exists, else might be null
+                    'village': user['village'],
+                    'issuesReported': user['issues_reported'] ?? 0,
+                  }
+               };
+            }
+         }
+        return {'success': true}; 
+      } else {
+        return {'success': false, 'error': 'Update failed: ${res.body}'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Update failed: $e'};
+    }
+  }
 }

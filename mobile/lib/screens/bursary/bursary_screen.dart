@@ -396,218 +396,187 @@ Other Sponsorship: ${_hasGoKSponsorship ? 'Yes' : 'No'} ${_hasGoKSponsorship ? '
           const SizedBox(height: 20),
 
           // Institution Section
-          const Text('Institution Details', style: TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-
-          Autocomplete<String>(
-            optionsBuilder: (TextEditingValue textEditingValue) {
-              if (textEditingValue.text == '') {
-                return const Iterable<String>.empty();
-              }
-              return _institutions.where((String option) {
-                return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
-              });
-            },
-            onSelected: (String selection) {
-              _institutionController.text = selection;
-            },
-            fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-              textEditingController.addListener(() {
-                 _institutionController.text = textEditingController.text;
-              });
-              
-              return TextField(
-                controller: textEditingController,
-                focusNode: focusNode,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Institution Name (Search or Type) *', Icons.school),
-              );
-            },
-            optionsViewBuilder: (context, onSelected, options) {
-              return Align(
-                alignment: Alignment.topLeft,
-                child: Material(
-                  color: const Color(0xFF1a1a3e),
-                  elevation: 4,
-                  child: Container(
-                    width: 300,
-                    constraints: const BoxConstraints(maxHeight: 200),
-                    child: ListView.builder(
-                      padding: EdgeInsets.zero,
-                      shrinkWrap: true,
-                      itemCount: options.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        final String option = options.elementAt(index);
-                        return ListTile(
-                          title: Text(option, style: const TextStyle(color: Colors.white)),
-                          onTap: () => onSelected(option),
-                        );
-                      },
+          _buildFormSection(
+            title: 'Institution Details',
+            icon: Icons.school,
+            children: [
+              Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text == '') {
+                    return const Iterable<String>.empty();
+                  }
+                  return _institutions.where((String option) {
+                    return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                  });
+                },
+                onSelected: (String selection) {
+                  _institutionController.text = selection;
+                },
+                fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                  textEditingController.addListener(() {
+                     _institutionController.text = textEditingController.text;
+                  });
+                  return TextField(
+                    controller: textEditingController,
+                    focusNode: focusNode,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: _inputDecoration('Name', Icons.search),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      color: const Color(0xFF1a1a3e),
+                      elevation: 4,
+                      child: Container(
+                        width: 300,
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final String option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option, style: const TextStyle(color: Colors.white)),
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _institutionType,
-                  dropdownColor: const Color(0xFF1a1a3e),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _inputDecoration('Type', Icons.category),
-                  items: const [
-                    DropdownMenuItem(value: 'university', child: Text('University')),
-                    DropdownMenuItem(value: 'college', child: Text('College')),
-                    DropdownMenuItem(value: 'polytechnic', child: Text('Polytechnic')),
-                    DropdownMenuItem(value: 'secondary', child: Text('Secondary')),
-                  ],
-                  onChanged: (v) => setState(() => _institutionType = v!),
-                ),
+                  );
+                },
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _admissionController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _inputDecoration('Adm No', Icons.numbers),
-                ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _institutionType,
+                dropdownColor: const Color(0xFF1a1a3e),
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Type', Icons.category),
+                items: const [
+                  DropdownMenuItem(value: 'university', child: Text('University')),
+                  DropdownMenuItem(value: 'college', child: Text('College')),
+                  DropdownMenuItem(value: 'polytechnic', child: Text('Polytechnic')),
+                  DropdownMenuItem(value: 'secondary', child: Text('Secondary')),
+                ],
+                onChanged: (v) => setState(() => _institutionType = v!),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _courseController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _inputDecoration('Course *', Icons.book),
-                ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _admissionController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Adm No', Icons.numbers),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _yearController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _inputDecoration('Year', Icons.calendar_today),
-                ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _courseController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Course', Icons.book),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _yearController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Current Year', Icons.calendar_today),
               ),
             ],
           ),
+          
           const SizedBox(height: 20),
 
           // Financial Section
-          const Text('Financial Details', style: TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-
-          Row(
+          _buildFormSection(
+            title: 'Financial Details',
+            icon: Icons.attach_money,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _annualFeesController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _inputDecoration('Annual Fees', Icons.payments),
-                ),
+              TextField(
+                controller: _annualFeesController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Annual Fees', Icons.payments),
               ),
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                title: const Text('Do you have HELB Loan?', style: TextStyle(color: Colors.white)),
+                value: _hasHelb,
+                onChanged: (v) => setState(() => _hasHelb = v!),
+                activeColor: const Color(0xFF6366f1),
+                contentPadding: EdgeInsets.zero,
+              ),
+              CheckboxListTile(
+                title: const Text('Any other GoK Sponsorship?', style: TextStyle(color: Colors.white)),
+                value: _hasGoKSponsorship,
+                onChanged: (v) => setState(() => _hasGoKSponsorship = v!),
+                activeColor: const Color(0xFF6366f1),
+                contentPadding: EdgeInsets.zero,
+              ),
+              if (_hasGoKSponsorship) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _sponsorshipDetailsController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: _inputDecoration('Specify Sponsorship', Icons.description),
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 12),
-          
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0f0f23).withOpacity(0.5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
-            ),
-            child: Column(
-              children: [
-                CheckboxListTile(
-                  title: const Text('Do you have HELB Loan?', style: TextStyle(color: Colors.white)),
-                  value: _hasHelb,
-                  onChanged: (v) => setState(() => _hasHelb = v!),
-                  activeColor: const Color(0xFF6366f1),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                CheckboxListTile(
-                  title: const Text('Any other GoK Sponsorship?', style: TextStyle(color: Colors.white)),
-                  value: _hasGoKSponsorship,
-                  onChanged: (v) => setState(() => _hasGoKSponsorship = v!),
-                  activeColor: const Color(0xFF6366f1),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                if (_hasGoKSponsorship) ...[
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _sponsorshipDetailsController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Specify Sponsorship', Icons.description),
-                  ),
-                ]
-              ],
-            ),
-          ),
+
           const SizedBox(height: 20),
 
           // Guardian Section
-          const Text('Guardian Details', style: TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-
-          Row(
+          _buildFormSection(
+            title: 'Guardian Details',
+            icon: Icons.people,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _guardianNameController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _inputDecoration('Name', Icons.person),
-                ),
+              TextField(
+                controller: _guardianNameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Full Name', Icons.person),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _guardianPhoneController,
-                  keyboardType: TextInputType.phone,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _inputDecoration('Phone', Icons.phone),
-                ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _guardianPhoneController,
+                keyboardType: TextInputType.phone,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Phone Number', Icons.phone),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _guardianRelation,
+                dropdownColor: const Color(0xFF1a1a3e),
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Relationship', Icons.family_restroom),
+                items: const [
+                  DropdownMenuItem(value: 'parent', child: Text('Parent')),
+                  DropdownMenuItem(value: 'guardian', child: Text('Guardian')),
+                  DropdownMenuItem(value: 'sibling', child: Text('Sibling')),
+                  DropdownMenuItem(value: 'other', child: Text('Other')),
+                ],
+                onChanged: (v) => setState(() => _guardianRelation = v!),
               ),
             ],
           ),
-          const SizedBox(height: 12),
 
-          DropdownButtonFormField<String>(
-            value: _guardianRelation,
-            dropdownColor: const Color(0xFF1a1a3e),
-            style: const TextStyle(color: Colors.white),
-            decoration: _inputDecoration('Relationship', Icons.family_restroom),
-            items: const [
-              DropdownMenuItem(value: 'parent', child: Text('Parent')),
-              DropdownMenuItem(value: 'guardian', child: Text('Guardian')),
-              DropdownMenuItem(value: 'sibling', child: Text('Sibling')),
-              DropdownMenuItem(value: 'other', child: Text('Other')),
-            ],
-            onChanged: (v) => setState(() => _guardianRelation = v!),
-          ),
           const SizedBox(height: 20),
 
-          // Reason
-          const Text('Reason for Application', style: TextStyle(color: Color(0xFF6366f1), fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: _reasonController,
-            maxLines: 4,
-            style: const TextStyle(color: Colors.white),
-            decoration: _inputDecoration('Explain why you need this bursary *', Icons.description),
+          // Reason Section
+          _buildFormSection(
+            title: 'Reason for Application',
+            icon: Icons.edit_note,
+            children: [
+              TextField(
+                controller: _reasonController,
+                maxLines: 4,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Explain why you need this bursary...', Icons.description),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
+
+          const SizedBox(height: 32),
 
           // Submit Button
           SizedBox(
@@ -627,6 +596,30 @@ Other Sponsorship: ${_hasGoKSponsorship ? 'Yes' : 'No'} ${_hasGoKSponsorship ? '
           ),
           const SizedBox(height: 40),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFormSection({required String title, required IconData icon, required List<Widget> children}) {
+    return Card(
+      color: const Color(0xFF1a1a3e),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: const Color(0xFF6366f1)),
+                const SizedBox(width: 10),
+                Text(title, style: const TextStyle(color: Color(0xFF6366f1), fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const Divider(color: Colors.white24, height: 24),
+            ...children,
+          ],
+        ),
       ),
     );
   }

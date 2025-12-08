@@ -132,6 +132,65 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> updateProfile({
+    required String fullName,
+    required String phone,
+    String? email,
+    String? village,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      if (_user == null) {
+        return {'success': false, 'error': 'No user logged in'};
+      }
+
+      // Format phone number
+      String formattedPhone = phone;
+      if (!phone.startsWith('+254')) {
+        formattedPhone = '+254$phone';
+      }
+
+      final userId = _user!['id'].toString();
+      
+      final result = await SupabaseService.updateUserProfile(
+        userId: userId,
+        fullName: fullName,
+        phone: formattedPhone,
+        email: email,
+        village: village,
+      );
+
+      if (result['success'] == true) {
+        // Update local user state if new data returned, otherwise just update fields we know changed
+        if (result['user'] != null) {
+          _user = result['user'];
+        } else {
+          // Fallback manual update if server didn't return object
+          _user!['fullName'] = fullName;
+          _user!['phone'] = formattedPhone;
+          if (email != null) _user!['email'] = email;
+          if (village != null) _user!['village'] = village;
+        }
+
+        // Persist to SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user', jsonEncode(_user));
+        
+        notifyListeners();
+        return {'success': true};
+      } else {
+        return {'success': false, 'error': result['error'] ?? 'Update failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Update failed: $e'};
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
     _token = null;
     _user = null;

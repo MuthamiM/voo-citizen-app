@@ -303,6 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const TextField(
+                        cursorColor: Colors.white,
                         style: TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           icon: Icon(Icons.search, color: Colors.white54),
@@ -399,41 +400,105 @@ class _HomeScreenState extends State<HomeScreen> {
     final auth = context.read<AuthService>();
     final nameController = TextEditingController(text: auth.user?['fullName'] ?? '');
     final phoneController = TextEditingController(text: auth.user?['phone'] ?? '');
+    final emailController = TextEditingController(text: auth.user?['email'] ?? '');
+    final villageController = TextEditingController(text: auth.user?['village'] ?? '');
+    bool isSaving = false;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a3e),
-        title: const Text('Edit Profile', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Full Name', labelStyle: TextStyle(color: Colors.white70)),
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: const Color(0xFF1a1a3e),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Edit Profile', style: TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Full Name',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Phone Number',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    helperText: 'Updates will be saved',
+                    helperStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Email Address (Optional)',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: villageController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Village',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phoneController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Phone Number', labelStyle: TextStyle(color: Colors.white70)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: isSaving ? null : () async {
+                setState(() => isSaving = true);
+                
+                final result = await auth.updateProfile(
+                  fullName: nameController.text,
+                  phone: phoneController.text,
+                  email: emailController.text.isNotEmpty ? emailController.text : null,
+                  village: villageController.text.isNotEmpty ? villageController.text : null,
+                );
+                
+                if (mounted) {
+                  setState(() => isSaving = false);
+                  if (result['success']) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Profile updated successfully!'), backgroundColor: Colors.green),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(result['error']), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366f1)),
+              child: isSaving 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Text('Save Changes', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
-          TextButton(
-            onPressed: () {
-              // In production, sync with backend. For now, just close.
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile updated successfully'), backgroundColor: Colors.green),
-              );
-            }, 
-            child: const Text('Save', style: TextStyle(color: Color(0xFF6366f1)))
-          ),
-        ],
       ),
     );
   }

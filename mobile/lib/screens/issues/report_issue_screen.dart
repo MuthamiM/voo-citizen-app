@@ -22,6 +22,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
+  final _specifyIssueController = TextEditingController();
   late String _selectedCategory;
   final List<File> _images = [];
   bool _isSubmitting = false;
@@ -144,7 +145,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         userPhone: auth.user!['phone'] ?? 'N/A', // Handle missing phone for Google users
         title: _titleController.text,
         description: _descriptionController.text,
-        category: _selectedCategory,
+        category: _selectedCategory == 'Other' ? _specifyIssueController.text : _selectedCategory,
         images: base64Images,
         location: {
           'address': _locationController.text,
@@ -241,6 +242,17 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                 onChanged: (v) => setState(() => _selectedCategory = v!),
               ),
+              if (_selectedCategory == 'Other') ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _specifyIssueController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    hintText: 'Specify Issue',
+                    hintStyle: TextStyle(color: Colors.white54),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
               // Village Selection
