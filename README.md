@@ -1,20 +1,18 @@
 # VOO Citizen App
 
-A mobile Android application for citizens of Voo Kyamatu Ward to report community issues, apply for bursaries, and access government services.
+The official mobile application for VOO Ward citizens.
 
-## Features
-- 📷 Report issues with photos
-- 🎓 Bursary applications
-- 📍 GPS location capture
-- 🔔 Push notifications
-- 🔒 Secure authentication
+## v6 Release (Coral Pink Theme)
 
-## Tech Stack
-- **Mobile**: Flutter (Android)
-- **Backend**: Node.js/Express
-- **Database**: MongoDB
-- **AI**: OpenAI GPT-4 Vision
-- **Notifications**: Firebase Cloud Messaging
+**Download the latest version here:**
+[Download VOO Citizen App v6 (APK)](./voo-citizen-app-v6.apk)
 
-## License
-MIT License
+### Features
+- **New Theme:** Unified Coral Pink aesthetic.
+- **Improved UI:** Static, clean layout with white cards.
+- **Bug Fixes:** Resolved layout overflow in Services screen.
+
+### Installation
+1. Download the APK file.
+2. Allow installation from unknown sources if prompted.
+3. Install and login.
