@@ -105,3 +105,16 @@ ALTER TABLE bursary_applications ENABLE ROW LEVEL SECURITY;
 CREATE INDEX idx_issues_user_id ON issues(user_id);
 CREATE INDEX idx_issues_status ON issues(status);
 CREATE INDEX idx_bursary_user_id ON bursary_applications(user_id);
+
+-- 7. App Config Table (for app updates and settings)
+CREATE TABLE app_config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Seed app config for update management
+INSERT INTO app_config (key, value) VALUES 
+  ('min_version', '7.0.0'),
+  ('download_url', 'https://github.com/MuthamiM/voo-citizen-app/releases/download/v7.0/VOO-Citizen-App-v7.0.apk'),
+  ('latest_version', '7.0.0');

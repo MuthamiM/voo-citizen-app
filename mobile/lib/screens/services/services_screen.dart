@@ -23,12 +23,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
   ];
   bool _isLoading = false;
 
-  // Theme colors
+  // Theme colors - Dark Orange Theme
   static const Color primaryOrange = Color(0xFFFF8C00);
-  static const Color bgDark = Color(0xFFF9C5C1);
-  static const Color textDark = Color(0xFF333333);
-  static const Color textMuted = Color(0xFF666666);
-  static const Color cardBg = Color(0xFFFFFFFF);
+  static const Color bgDark = Color(0xFF1A1A1A);
+  static const Color textDark = Color(0xFFFFFFFF);
+  static const Color textMuted = Color(0xFF888888);
+  static const Color cardBg = Color(0xFF2A2A2A);
 
   @override
   void initState() {
@@ -148,7 +148,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   child: Container(
                     width: double.infinity,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFFAFAFA),
+                      color: Color(0xFF2A2A2A), // cardDark instead of light
                       borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                     ),
                     child: RefreshIndicator(
@@ -160,7 +160,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Quick Access', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark)),
+                            const Text('Quick Access', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                             const SizedBox(height: 16),
                             
                             GridView.count(
@@ -183,7 +183,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Emergency Contacts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark)),
+                                const Text('Emergency Contacts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                                 TextButton(
                                   onPressed: () => _showEmergencyContacts(context),
                                   child: const Text('View All', style: TextStyle(color: primaryOrange, fontWeight: FontWeight.w600)),
@@ -204,10 +204,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                     margin: const EdgeInsets.only(right: 12),
                                     padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: const Color(0xFF333333),
                                       borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
-                                      border: Border.all(color: Colors.grey.shade100),
+                                      border: Border.all(color: const Color(0xFF444444)),
                                     ),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +214,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                       children: [
                                         Icon(c['icon'] ?? Icons.phone, color: const Color(0xFFEF4444), size: 28),
                                         const SizedBox(height: 12),
-                                        Text(c['name'] ?? '', style: const TextStyle(color: textDark, fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        Text(c['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
                                       ],
                                     ),
                                   );
@@ -224,16 +223,16 @@ class _ServicesScreenState extends State<ServicesScreen> {
                             ),
                             
                             const SizedBox(height: 32),
-                            const Text('Announcements', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark)),
+                            const Text('Announcements', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                             const SizedBox(height: 16),
                             
                             if (_announcements.isEmpty)
                               Container(
                                 padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: const Color(0xFF333333),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: Colors.grey.shade100),
+                                  border: Border.all(color: const Color(0xFF444444)),
                                 ),
                                 child: Row(
                                   children: [
@@ -248,9 +247,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                 margin: const EdgeInsets.only(bottom: 16),
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: const Color(0xFF333333),
                                   borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 4))],
+                                  border: Border.all(color: const Color(0xFF444444)),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,7 +263,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
-                                          child: Text(a['title'] ?? '', style: const TextStyle(color: textDark, fontWeight: FontWeight.bold, fontSize: 15)),
+                                          child: Text(a['title'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
                                         ),
                                       ],
                                     ),
@@ -299,10 +298,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFF333333),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
-          border: Border.all(color: Colors.grey.shade50),
+          border: Border.all(color: const Color(0xFF444444)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,11 +308,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
               child: Icon(icon, color: color, size: 24),
             ),
             constSpacer(height: 10),
-            Text(title, style: const TextStyle(color: textDark, fontWeight: FontWeight.bold, fontSize: 14)),
+            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(height: 2),
             Text(subtitle, style: const TextStyle(color: textMuted, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
