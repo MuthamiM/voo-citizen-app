@@ -594,22 +594,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildInputField(TextEditingController controller, String hint, TextInputType type, {String? prefix}) {
     return Container(
       decoration: BoxDecoration(
-        color: inputBg,
+        color: const Color(0xFF333333),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: inputBorder),
+        border: Border.all(color: const Color(0xFF555555), width: 1),
       ),
       child: TextField(
         controller: controller,
         keyboardType: type,
         cursorColor: primaryOrange,
-        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+        cursorWidth: 2,
+        style: const TextStyle(
+          color: Color(0xFFFFFFFF), 
+          fontSize: 16, 
+          fontWeight: FontWeight.w500,
+        ),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: textMuted.withOpacity(0.7), fontSize: 15),
+          hintStyle: const TextStyle(color: Color(0xFF888888), fontSize: 15),
           prefixText: prefix != null ? '$prefix  ' : null,
-          prefixStyle: const TextStyle(color: Colors.white, fontSize: 15),
+          prefixStyle: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 16, fontWeight: FontWeight.w500),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFFF8C00), width: 2),
+          ),
+          enabledBorder: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         ),
       ),
     );
@@ -618,7 +628,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildPasswordField(TextEditingController controller, String hint) {
     return Container(
       decoration: BoxDecoration(
-        color: inputBg,
+        color: const Color(0xFF333333),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: primaryOrange, width: 1.5),
       ),
@@ -627,12 +637,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         obscureText: _obscurePassword,
         onChanged: (_) => setState(() {}),
         cursorColor: primaryOrange,
-        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+        cursorWidth: 2,
+        style: const TextStyle(
+          color: Color(0xFFFFFFFF), 
+          fontSize: 16, 
+          fontWeight: FontWeight.w500,
+        ),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: textMuted.withOpacity(0.7), fontSize: 15),
+          hintStyle: const TextStyle(color: Color(0xFF888888), fontSize: 15),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         ),
       ),
     );

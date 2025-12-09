@@ -53,7 +53,8 @@ class _VooCitizenAppState extends State<VooCitizenApp> {
     if (result['updateRequired'] == true && mounted) {
       final ctx = _navigatorKey.currentContext;
       if (ctx != null) {
-        AppUpdateService.showUpdateDialog(ctx, result['downloadUrl'] ?? '');
+        // Show MANDATORY blocking overlay - user cannot dismiss
+        AppUpdateService.showMandatoryUpdateOverlay(ctx, downloadUrl: result['downloadUrl']);
       }
     }
   }
