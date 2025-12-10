@@ -203,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                Text('Welcome to Voo Kyamatu Ward', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
+                                Text('Welcome back', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
                               ],
                             ),
                           ),

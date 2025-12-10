@@ -139,7 +139,7 @@ class _MyIssuesScreenState extends State<MyIssuesScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'My Issues',
+                            'My Reports',
                             style: TextStyle(
                               fontSize: 28, 
                               fontWeight: FontWeight.w800, 
