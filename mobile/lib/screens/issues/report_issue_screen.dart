@@ -47,7 +47,37 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   static const Color accent = Color(0xFFFF8C00); // Orange
   static const Color fieldBg = Color(0xFF2A2A2A); // Input BG
 
-  Future<void> _pickImage() async {
+  Future<void> _showPicker(BuildContext context) async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardBg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.white),
+              title: const Text('Gallery', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera, color: Colors.white),
+              title: const Text('Camera', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
     if (_selectedImages.length >= 5) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Max 5 images allowed')),
@@ -56,9 +86,26 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     }
     
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50, maxWidth: 1024, maxHeight: 1024);
+      final XFile? image = await _picker.pickImage(
+        source: source, 
+        imageQuality: 50, 
+        maxWidth: 1024, 
+        maxHeight: 1024
+      );
+      
       if (image != null) {
-        final bytes = await File(image.path).readAsBytes();
+        final file = File(image.path);
+        // Check size: 5MB = 5 * 1024 * 1024 bytes
+        if (await file.length() > 5 * 1024 * 1024) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Image is too large (Max 5MB)')),
+          );
+          }
+          return;
+        }
+
+        final bytes = await file.readAsBytes();
         final base64 = 'data:image/jpeg;base64,${base64Encode(bytes)}'; // Data URI format
         
         setState(() {
@@ -294,7 +341,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                           children: [
                             // Add Button
                             GestureDetector(
-                              onTap: _pickImage,
+                              onTap: () => _showPicker(context),
                               child: Container(
                                 width: 80, height: 80,
                                 margin: const EdgeInsets.only(right: 12),

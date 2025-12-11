@@ -11,8 +11,8 @@ import 'supabase_service.dart';
 /// Service to check for app updates and FORCE users to update
 class AppUpdateService {
   // Current app version - UPDATE THIS when releasing new versions
-  static const String currentVersion = '10.0.0';
-  static const int currentVersionCode = 100;
+  static const String currentVersion = '11.0.4';
+  static const int currentVersionCode = 114;
 
   
   // GitHub releases URL
