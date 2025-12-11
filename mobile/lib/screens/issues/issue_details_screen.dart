@@ -7,10 +7,10 @@ class IssueDetailsScreen extends StatelessWidget {
 
   // Theme colors
   static const Color primaryOrange = Color(0xFFFF8C00);
-  static const Color bgDark = Color(0xFFF9C5C1);
-  static const Color textDark = Color(0xFF333333);
-  static const Color textMuted = Color(0xFF666666);
-  static const Color cardBg = Color(0xFFFFFFFF);
+  static const Color bgDark = Color(0xFF000000); // Pure Black
+  static const Color textDark = Color(0xFFFFFFFF); // White
+  static const Color textMuted = Color(0xFFAAAAAA); // Light Grey
+  static const Color cardBg = Color(0xFF1C1C1C); // Dark Card
 
   @override
   Widget build(BuildContext context) {
@@ -19,12 +19,12 @@ class IssueDetailsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: bgDark,
       appBar: AppBar(
-        title: const Text('Issue Details', style: TextStyle(color: textDark, fontWeight: FontWeight.bold)),
+        title: const Text('Issue Details', style: TextStyle(color: primaryOrange, fontWeight: FontWeight.bold)),
         backgroundColor: bgDark,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: textDark),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -33,7 +33,7 @@ class IssueDetailsScreen extends StatelessWidget {
         height: double.infinity,
         margin: const EdgeInsets.only(top: 10),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: cardBg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: SingleChildScrollView(
