@@ -164,6 +164,7 @@ class _UpdateDownloadScreenState extends State<_UpdateDownloadScreen> {
           _downloadedFilePath = savePath;
           _status = 'Download complete! Tap to install';
           _progress = 1.0;
+          _isDownloading = false;
         });
         
         // Auto-trigger install
@@ -263,7 +264,7 @@ class _UpdateDownloadScreenState extends State<_UpdateDownloadScreen> {
                       ),
                     ),
                     child: Text(
-                      _progress >= 1.0 ? 'next' : 'Download Now',
+                      _progress >= 1.0 ? 'Install Update' : 'Download Now',
                       style: const TextStyle(
                         color: Colors.black,
                         fontSize: 16,
