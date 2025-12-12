@@ -5,6 +5,7 @@ import 'screens/home/home_screen.dart';
 import 'services/auth_service.dart';
 import 'services/supabase_service.dart';
 import 'services/app_update_service.dart';
+import 'services/cache/hive_cache_service.dart';
 import 'providers/theme_provider.dart';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -15,6 +16,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await SupabaseService.initialize();
+  await HiveCacheService.init(); // Initialize offline cache
   await NotificationService.initialize();
   await StorageService.initialize();
   
