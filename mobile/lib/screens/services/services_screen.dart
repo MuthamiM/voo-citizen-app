@@ -153,8 +153,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
                               crossAxisSpacing: 16,
                               childAspectRatio: 1.3,
                               children: [
-                                _buildServiceCard(Icons.badge_outlined, 'Lost ID', 'Report lost ID', const Color(0xFFEF4444), () => _showLostIdForm(context)),
-                                _buildServiceCard(Icons.feedback_outlined, 'Feedback', 'Send suggestions', const Color(0xFF3B82F6), () => _showFeedbackForm(context)),
+                                _buildServiceCard(Icons.badge_outlined, 'Lost ID', 'Report lost ID', const Color(0xFFEF4444), () => Navigator.pushNamed(context, '/lost-id')),
+                                _buildServiceCard(Icons.feedback_outlined, 'Feedback', 'Send suggestions', const Color(0xFF3B82F6), () => Navigator.pushNamed(context, '/feedback')),
                                 _buildServiceCard(Icons.emergency_outlined, 'Emergency', 'Get instant help', const Color(0xFFF59E0B), () => _showEmergencyContacts(context)),
                                 _buildServiceCard(Icons.info_outline, 'About', 'App info', const Color(0xFF8B5CF6), () => _showAbout(context)),
                               ],

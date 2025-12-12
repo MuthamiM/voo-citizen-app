@@ -335,4 +335,87 @@ class DashboardService {
       return {'success': false, 'error': 'Application failed: $e'};
     }
   }
+
+  // ============ LOST ID REPORTING ============
+
+  /// Report a lost ID
+  static Future<Map<String, dynamic>> reportLostId({
+    required String reporterPhone,
+    required String reporterName,
+    required String idOwnerName,
+    String? idOwnerPhone,
+    bool isForSelf = true,
+    String? idNumber,
+    String? lastSeenLocation,
+    String? dateLost,
+    String? additionalInfo,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$apiBase/lost-ids'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'reporter_phone': reporterPhone,
+          'reporter_name': reporterName,
+          'id_owner_name': idOwnerName,
+          'id_owner_phone': idOwnerPhone,
+          'is_for_self': isForSelf,
+          'id_number': idNumber,
+          'last_seen_location': lastSeenLocation,
+          'date_lost': dateLost,
+          'additional_info': additionalInfo,
+        }),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'success': false, 'error': 'Failed to report: $e'};
+    }
+  }
+
+  /// Get lost ID reports for a user
+  static Future<List<dynamic>> getLostIdReports(String phone) async {
+    try {
+      final res = await http.get(
+        Uri.parse('$apiBase/lost-ids/$phone'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body) ?? [];
+      }
+      return [];
+    } catch (e) {
+      print('Get lost IDs error: $e');
+      return [];
+    }
+  }
+
+  // ============ FEEDBACK ============
+
+  /// Submit feedback
+  static Future<Map<String, dynamic>> submitFeedback({
+    String? userId,
+    String? userPhone,
+    String? userName,
+    String category = 'general',
+    required String message,
+    int? rating,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$apiBase/feedback'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'user_phone': userPhone,
+          'user_name': userName,
+          'category': category,
+          'message': message,
+          'rating': rating,
+        }),
+      );
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'success': false, 'error': 'Failed to submit: $e'};
+    }
+  }
 }

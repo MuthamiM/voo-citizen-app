@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/lost_id/lost_id_screen.dart';
+import 'screens/feedback/feedback_screen.dart';
 import 'services/auth_service.dart';
 import 'services/supabase_service.dart';
 import 'services/app_update_service.dart';
@@ -70,6 +72,10 @@ class _VooCitizenAppState extends State<VooCitizenApp> {
           title: 'VOO Citizen',
           debugShowCheckedModeBanner: false,
           theme: themeProvider.themeData,
+          routes: {
+            '/lost-id': (context) => const LostIdScreen(),
+            '/feedback': (context) => const FeedbackScreen(),
+          },
           home: Consumer<AuthService>(
             builder: (context, auth, _) {
               return auth.isLoggedIn ? const HomeScreen() : const LoginScreen();
