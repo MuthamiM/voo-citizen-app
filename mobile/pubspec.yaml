@@ -1,7 +1,7 @@
 name: voo_citizen_app
 description: VOO Citizen App - Report community issues with photos
 publish_to: "none"
-version: 11.0.5+115
+version: 11.0.6+116
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
