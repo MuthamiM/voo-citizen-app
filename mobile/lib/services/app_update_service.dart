@@ -11,13 +11,13 @@ import 'supabase_service.dart';
 /// Service to check for app updates and FORCE users to update
 class AppUpdateService {
   // Current app version - UPDATE THIS when releasing new versions
-  static const String currentVersion = '11.0.4';
-  static const int currentVersionCode = 114;
+  static const String currentVersion = '1.4';
+  static const int currentVersionCode = 14;
 
   
   // GitHub releases URL
   static const String githubReleasesUrl = 'https://github.com/MuthamiM/voo-citizen-app/releases';
-  static const String directDownloadUrl = 'https://github.com/MuthamiM/voo-citizen-app/releases/download/v10.0.0/app-release.apk';
+  static const String directDownloadUrl = 'https://github.com/MuthamiM/voo-citizen-app/releases/download/v1.4/app-release.apk';
 
   /// Check if an update is required
   static Future<Map<String, dynamic>> checkForUpdate() async {

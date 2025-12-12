@@ -501,16 +501,20 @@ class SupabaseService {
   }) async {
     try {
       final url = '$supabaseUrl/rest/v1/issues';
+      // Generate issue number ISS-XXXXXX
+      final issueNumber = 'ISS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}${Random().nextInt(999)}';
+      
       final res = await http.post(
         Uri.parse(url),
         headers: _headers,
         body: jsonEncode({
           'user_id': userId,
           'title': title,
+          'issue_number': issueNumber,
           'category': category,
           'description': description,
           'location': location,
-          'image_urls': imageUrls,
+          'images': imageUrls, // Changed from image_urls to match schema
           'status': 'pending',
           'created_at': DateTime.now().toUtc().toIso8601String(),
         }),

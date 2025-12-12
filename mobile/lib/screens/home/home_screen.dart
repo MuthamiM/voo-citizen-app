@@ -679,7 +679,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 20),
                         // Version
-                        Center(child: Text('Version 10.0.0', style: TextStyle(color: textMuted.withOpacity(0.5), fontSize: 12))),
+                        Center(child: Text('Version 11.0.5', style: TextStyle(color: textMuted.withOpacity(0.5), fontSize: 12))),
                         const SizedBox(height: 100),
                       ],
                     ),
